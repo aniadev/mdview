@@ -2,6 +2,21 @@
 
 All notable changes to mdview.
 
+## [1.0.1] — 2026-05-18
+
+### Fixed
+
+- Preview: relative image paths starting with `./` (e.g. `![](./public/img.png)`) now render. Path normalization resolves `.` and `..` segments before passing to the Tauri asset protocol.
+
+### Added
+
+- Asset protocol enabled (`app.security.assetProtocol`) so local images load in Preview.
+- Auto-updater: app checks for new releases on startup via `tauri-plugin-updater`, prompts user to install signed updates from the GitHub Releases `latest.json` endpoint.
+
+### Infrastructure
+
+- Release workflow now signs `latest.json` using `TAURI_SIGNING_PRIVATE_KEY` + `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` GitHub secrets, enabling verified updates from v1.0.1 onward.
+
 ## [1.0.0] — 2026-05-18
 
 Initial public release.

@@ -1,14 +1,14 @@
 {
   "name": "mdview",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Focused desktop editor for Markdown files inside a project folder. Tauri-based, dark+light themes, GFM + math + Mermaid.",
   "license": "MIT",
   "author": "mdview",
-  "homepage": "https://github.com/mdview/mdview",
+  "homepage": "https://github.com/aniadev/mdview",
   "repository": {
     "type": "git",
-    "url": "https://github.com/mdview/mdview.git"
+    "url": "https://github.com/aniadev/mdview.git"
   },
   "keywords": [
     "markdown",
@@ -45,6 +45,8 @@
     "@tauri-apps/plugin-fs": "^2",
     "@tauri-apps/plugin-opener": "^2.5.4",
     "@tauri-apps/plugin-store": "^2",
+    "@tauri-apps/plugin-updater": "^2",
+    "@tauri-apps/plugin-process": "^2",
     "@vscode/markdown-it-katex": "^1.1.2",
     "codemirror": "^6.0.2",
     "fuse.js": "^7.3.0",

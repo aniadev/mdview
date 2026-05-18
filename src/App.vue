@@ -8,6 +8,7 @@ import { useWorkspaceStore } from "./stores/workspace";
 import { useTabsStore } from "./stores/tabs";
 import { usePaletteStore } from "./stores/palette";
 import { useThemeStore } from "./stores/theme";
+import { checkForUpdate } from "./updater";
 
 const workspace = useWorkspaceStore();
 const tabs = useTabsStore();
@@ -41,6 +42,7 @@ onMounted(async () => {
   await theme.init();
   await workspace.restoreWorkspace();
   if (workspace.rootPath) await palette.refresh(workspace.rootPath);
+  void checkForUpdate({ silent: true });
 });
 
 onBeforeUnmount(() => {

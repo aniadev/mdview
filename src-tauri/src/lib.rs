@@ -616,17 +616,25 @@ pub fn run() {
         .expect("error while building tauri application");
 
     app.run(|app_handle, event| {
-        if let RunEvent::Opened { urls } = event {
-            for url in urls {
-                if let Ok(p) = url.to_file_path() {
-                    let path = p.to_string_lossy().to_string();
-                    if is_markdown_path(&path) && p.exists() {
-                        push_pending(app_handle, path.clone());
-                        let _ = app_handle.emit("open-file-request", path);
-                        focus_main_window(app_handle);
-                    }
+        handle_run_event(app_handle, event);
+    });
+}
+
+#[cfg(target_os = "macos")]
+fn handle_run_event(app_handle: &AppHandle, event: RunEvent) {
+    if let RunEvent::Opened { urls } = event {
+        for url in urls {
+            if let Ok(p) = url.to_file_path() {
+                let path = p.to_string_lossy().to_string();
+                if is_markdown_path(&path) && p.exists() {
+                    push_pending(app_handle, path.clone());
+                    let _ = app_handle.emit("open-file-request", path);
+                    focus_main_window(app_handle);
                 }
             }
         }
-    });
+    }
 }
+
+#[cfg(not(target_os = "macos"))]
+fn handle_run_event(_app_handle: &AppHandle, _event: RunEvent) {}

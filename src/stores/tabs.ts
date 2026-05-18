@@ -108,6 +108,24 @@ export const useTabsStore = defineStore("tabs", () => {
     if (activePath.value) await closeTab(activePath.value);
   }
 
+  function handleFileRenamed(oldPath: string, newPath: string, newName: string) {
+    const tab = tabs.value.find((t) => t.path === oldPath);
+    if (!tab) return;
+    tab.path = newPath;
+    tab.name = newName;
+    if (activePath.value === oldPath) activePath.value = newPath;
+  }
+
+  function handleFileDeleted(path: string) {
+    const idx = tabs.value.findIndex((t) => t.path === path);
+    if (idx === -1) return;
+    tabs.value.splice(idx, 1);
+    if (activePath.value === path) {
+      const next = tabs.value[idx] ?? tabs.value[idx - 1] ?? null;
+      activePath.value = next ? next.path : null;
+    }
+  }
+
   async function closeAllTabs(): Promise<void> {
     const dirty = tabs.value.filter(isDirty);
     if (dirty.length > 0) {
@@ -135,5 +153,7 @@ export const useTabsStore = defineStore("tabs", () => {
     closeActive,
     closeAllTabs,
     setActive,
+    handleFileRenamed,
+    handleFileDeleted,
   };
 });

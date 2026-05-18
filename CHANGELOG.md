@@ -6,6 +6,21 @@ All notable changes to mdview.
 
 ### Added
 
+- **Multi-root workspace via `.code-workspace`** — open VSCode-format workspace files (`{"folders":[{"path":"..."}]}`); roots render as independent top-level sections in the File Tree; relative folder paths resolve against the workspace file's directory; missing roots surface an inline warning instead of failing the load. JSONC comments are tolerated (FR-24, FR-25).
+- **File management from the File Tree** — right-click any folder for "New File", right-click any `.md` file for Rename / Delete. Inline editable rows handle create + rename; Delete uses a native confirm and is permanent (no Trash). Open tabs follow rename and close automatically on delete (FR-23, FR-30, FR-31).
+- **Activity Bar** — 48px left rail with Folders + Terminal icons that toggle the Sidebar and the bottom Terminal Panel respectively. Active panels are highlighted; activity bar stays visible regardless of panel state (FR-26).
+- **Terminal Panel** — VSCode-style bottom panel hosting an embedded `portable-pty` shell rendered with xterm.js. Drag the top edge to resize (120–800px, persisted within session). Toggle with the Activity Bar icon or `Cmd/Ctrl+\``. System shell auto-detected (`$SHELL` on Unix; `pwsh → powershell → cmd` on Windows). Working directory defaults to the first workspace root (or `$HOME`). Session survives panel toggles and is killed on app exit (FR-27, FR-28).
+- **App Header** — global header bar now hosts the Sidebar Toggle (left) and Theme Toggle (right); `Cmd/Ctrl+B` still toggles the sidebar (FR-29, FR-22).
+
+### Changed
+
+- `palette` store now takes `rootPaths: string[]` and dedupes files across roots.
+- `workspace` persistence supports both `workspace_path` (legacy single folder) and `workspace_file` (path to a `.code-workspace`); the latter wins on restore.
+
+## [1.0.2] — 2026-05-18
+
+### Added
+
 - **Tab context menu** — right-click any tab header to Close the tab or Close All Tabs. The close-all action prompts if any open files have unsaved changes.
 - **Preview pane theme toggle** — independent dark/light control for the preview pane (☀/☾ button in the preview toolbar), persisted separately from the editor theme. Affects syntax highlighting, Mermaid diagram theme, and browser-export HTML.
 - **Sidebar toggle** — hide/show the primary sidebar via `Cmd/Ctrl+B` or the ◀/▶ button at the left edge of the tab bar. `Cmd+B` in the CodeMirror editor still performs bold formatting; sidebar toggle fires only when the editor is not focused.

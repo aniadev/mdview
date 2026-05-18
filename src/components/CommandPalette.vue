@@ -84,10 +84,7 @@ function onBackdropClick() {
 <style>
 .palette-overlay {
   position: fixed;
-  top: 0;
-  left: var(--sidebar-width);
-  right: 0;
-  bottom: 0;
+  inset: 0;
   background: rgba(0, 0, 0, 0.35);
   display: flex;
   justify-content: center;

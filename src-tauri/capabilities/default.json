@@ -13,7 +13,9 @@
     {
       "identifier": "fs:scope",
       "allow": [
-        { "path": "$HOME/**" }
+        { "path": "$HOME/**" },
+        { "path": "/tmp/**" },
+        { "path": "/Volumes/**" }
       ]
     },
     "store:default",

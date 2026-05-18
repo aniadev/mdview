@@ -27,12 +27,32 @@ export const usePaletteStore = defineStore("palette", () => {
     });
   }
 
-  async function refresh(rootPath: string) {
+  async function refresh(rootPaths: string[]) {
+    if (!rootPaths || rootPaths.length === 0) {
+      files.value = [];
+      fuse = null;
+      return;
+    }
     try {
-      files.value = await invoke<MdFile[]>("list_md_files", { root: rootPath });
+      const all: MdFile[] = [];
+      const seen = new Set<string>();
+      for (const root of rootPaths) {
+        try {
+          const list = await invoke<MdFile[]>("list_md_files", { root });
+          for (const f of list) {
+            if (seen.has(f.path)) continue;
+            seen.add(f.path);
+            all.push(f);
+          }
+        } catch (e) {
+          console.error("list_md_files failed for", root, e);
+        }
+      }
+      all.sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
+      files.value = all;
       rebuildIndex();
     } catch (e) {
-      console.error("list_md_files failed", e);
+      console.error("palette refresh failed", e);
       files.value = [];
       fuse = null;
     }
@@ -42,13 +62,11 @@ export const usePaletteStore = defineStore("palette", () => {
     const q = query.value.trim();
     if (!q) return files.value.slice(0, 20);
     if (!fuse) return [];
-    return fuse
-      .search(q, { limit: 20 })
-      .map((r) => r.item);
+    return fuse.search(q, { limit: 20 }).map((r) => r.item);
   });
 
-  async function open(rootPath: string | null) {
-    if (rootPath) await refresh(rootPath);
+  async function open(rootPaths: string[]) {
+    if (rootPaths.length > 0) await refresh(rootPaths);
     query.value = "";
     selectedIndex.value = 0;
     isOpen.value = true;

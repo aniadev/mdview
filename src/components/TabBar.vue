@@ -1,10 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount } from "vue";
 import { useTabsStore } from "../stores/tabs";
-import { useUiStore } from "../stores/ui";
 
 const tabs = useTabsStore();
-const ui = useUiStore();
 
 function onCloseClick(e: MouseEvent, path: string) {
   e.stopPropagation();
@@ -44,13 +42,6 @@ onBeforeUnmount(() => window.removeEventListener("click", onWindowClick));
 
 <template>
   <div class="tab-bar">
-    <button
-      class="icon-btn tab-sidebar-btn"
-      :title="ui.sidebarVisible ? 'Hide Sidebar (Cmd/Ctrl+B)' : 'Show Sidebar (Cmd/Ctrl+B)'"
-      @click="ui.toggleSidebar()"
-    >
-      {{ ui.sidebarVisible ? "◀" : "▶" }}
-    </button>
     <div class="tab-list">
       <div
         v-for="tab in tabs.tabs"
@@ -97,18 +88,6 @@ onBeforeUnmount(() => window.removeEventListener("click", onWindowClick));
   height: 32px;
   flex: 0 0 32px;
   overflow: hidden;
-}
-
-.tab-sidebar-btn {
-  flex: 0 0 auto;
-  border-right: 1px solid var(--border);
-  border-radius: 0;
-  border: none;
-  border-right: 1px solid var(--border);
-  height: 100%;
-  width: 28px;
-  padding: 0;
-  font-size: 9px;
 }
 
 .tab-list {

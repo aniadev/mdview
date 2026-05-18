@@ -10,3 +10,22 @@ export interface TreeNode extends FsEntry {
   expanded?: boolean;
   loading?: boolean;
 }
+
+export interface WorkspaceRoot {
+  path: string;
+  name: string;
+  exists: boolean;
+  loading: boolean;
+  loadError: string | null;
+  children: TreeNode[];
+}
+
+export interface CodeWorkspaceFolder {
+  name: string;
+  path: string;
+  exists: boolean;
+}
+
+export interface CodeWorkspace {
+  folders: CodeWorkspaceFolder[];
+}

@@ -28,19 +28,24 @@ Two-process app: Vue 3 frontend in `src/` talks to a Rust Tauri 2 backend in `sr
 All FS access is brokered through these — the frontend never uses `@tauri-apps/plugin-fs` directly for app data:
 
 - `list_dir(path)` — single-level directory listing; `has_md` is computed via a **recursive** `WalkDir` so directories without any `.md` descendant can be dimmed in the sidebar. Hidden entries (`.`-prefixed) are skipped at every level.
-- `list_md_files(root)` — flat recursive list of all `.md` files, used by the command palette.
+- `list_md_files(root)` — flat recursive list of all `.md` files, used by the command palette (called once per root and deduped in the frontend store).
 - `read_text` / `write_text` — UTF-8 file IO.
 - `path_exists` — used to validate a restored workspace path on startup.
 - `write_temp_html(html, base_name)` — writes a self-contained HTML snapshot to the OS temp dir; the frontend then calls `openPath` (opener plugin) to launch it in the system browser. Filename is sanitized (alphanumeric + `-_` only) and timestamped.
+- `create_md_file(dir, filename)` / `rename_path(from, to)` / `delete_file(path)` — file management used by the Explorer context menu (v1.1). `create_md_file` auto-appends `.md` if missing and rejects duplicates; `delete_file` refuses directories.
+- `parse_code_workspace(path)` — reads a VSCode-style `.code-workspace` JSON(C) file, returns the resolved `folders[]` (relative paths resolved against the file's parent). Comments and `/* */` blocks are stripped before JSON parse.
+- `pty_spawn / pty_write / pty_resize / pty_kill` — basic PTY for the embedded Terminal Panel (v1.1). Backed by `portable-pty`. Output streams to the frontend as `pty-data` Tauri events `{ id, data }`; process exit fires `pty-exit { id }`. Shell auto-detected (`$SHELL` on Unix, `pwsh → powershell → cmd` on Windows). Sessions are tracked in a `PtyStore` `Manager` state.
 
-When adding a Rust command: register it in the `invoke_handler![]` macro at the bottom of `lib.rs` **and** add any new permission to `src-tauri/capabilities/default.json`. The current capability grants `fs:scope` for `$HOME/**` only — paths outside that will fail at runtime.
+When adding a Rust command: register it in the `invoke_handler![]` macro at the bottom of `lib.rs` **and** add any new permission to `src-tauri/capabilities/default.json`. The current capability grants `fs:scope` for `$HOME/**`, `/tmp/**`, and `/Volumes/**`.
 
 ### Frontend state (Pinia stores in `src/stores/`)
 
-- `workspace` — the single root folder. Persisted via `@tauri-apps/plugin-store` to `mdview-settings.json` under key `workspace_path`. `restoreWorkspace()` runs on mount and validates the path still exists. The tree is lazy: only the root level is loaded; `toggleDir()` populates children on first expand.
-- `tabs` — open files. Dirty = `content !== savedContent`. `closeTab` confirms via Tauri's native dialog when dirty. `openFile` is idempotent (existing tab is just re-activated).
-- `palette` — `Cmd/Ctrl+P` fuzzy file picker. Refreshes from `list_md_files` on workspace change.
+- `workspace` — one or more root folders (v1.1 multi-root). Two persistence keys: `workspace_path` (single folder, legacy) and `workspace_file` (path to a `.code-workspace`). `restoreWorkspace()` prefers the workspace file, falls back to the legacy single path, and validates each. The tree is lazy: per-root level loaded; `toggleDir()` populates children on first expand. Exposes `createMdFile / renameMdFile / deleteMdFile` which call the Rust commands and refresh the right slice of the tree, plus `rootPaths` (array) used by the palette and `rootPath` (first root, kept for compatibility).
+- `tabs` — open files. Dirty = `content !== savedContent`. `closeTab` confirms via Tauri's native dialog when dirty. `openFile` is idempotent (existing tab is just re-activated). `handleFileRenamed/Deleted` are called by the Explorer after the FS op so tabs follow the file or close silently.
+- `palette` — `Cmd/Ctrl+P` fuzzy file picker. Takes `rootPaths: string[]`; refreshes by listing each root via `list_md_files` and deduping.
 - `theme` — `dark` (default) / `light`, persisted in the same store file. Toggling re-initializes Mermaid and swaps the highlight.js stylesheet.
+- `ui` — `sidebarVisible`, `bottomPanelVisible`, `bottomPanelHeight` (clamped 120–800). Activity Bar icons call `toggleSidebar` / `toggleBottomPanel` directly; `Cmd/Ctrl+B` toggles the sidebar, `Cmd/Ctrl+\`` toggles the bottom Terminal panel.
+- `fsui` — Explorer UI state (shared context menu position/target, plus `pendingCreateInDir` / `pendingRenamePath`) so the inline `InlineFilenameInput` can render in the right tree node.
 
 ### Preview pipeline (`src/components/PreviewPane.vue`)
 
@@ -62,7 +67,9 @@ CodeMirror 6 with `@codemirror/lang-markdown` + `@codemirror/theme-one-dark`. To
 - **Path handling**: always normalize backslashes to forward slashes before splitting (`PreviewPane.dirname` / `joinAndNormalize` show the pattern). The same file may be opened on Windows or macOS, so don't assume separator.
 - **`scopeAll` is intentional** for `assetProtocol` — needed so the preview can load images from anywhere the user-selected workspace points to. Don't tighten it without rethinking the image-rewrite path.
 - **No backend logging plugin** is configured; `console.error` in the frontend goes to the webview devtools, `eprintln!` / `tracing` in Rust goes to the terminal you ran `pnpm tauri:dev` from.
-- **Workspace is a singleton** by design (PRD constraint) — don't add multi-root support without checking `_bmad-output/planning-artifacts/` first.
+- **Workspace can be multi-root** as of v1.1 (`.code-workspace` files). The store still exposes `rootPath` (first root only) for places that operate on a "current" root, but new code should prefer `rootPaths`. Keep `parse_code_workspace`'s JSONC-stripping in mind — VSCode `.code-workspace` files routinely include comments.
+- **Terminal Panel keeps its PTY alive across toggles** because `App.vue` mounts `BottomPanel` with `v-if="bottomPanelEverShown"` (one-shot latch) + `v-show="ui.bottomPanelVisible"` — don't refactor to `v-if` only or the shell will die every time the user closes the panel.
+- **Layout structure**: `[AppHeader]` on top; below it `[ActivityBar][WorkArea]` where `WorkArea` is a column of `[Sidebar | Main]` over `[BottomPanel]`. The bottom panel spans the full width of the work area (sidebar + main), matching VSCode.
 
 ## macOS signing
 

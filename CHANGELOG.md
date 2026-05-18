@@ -16,6 +16,7 @@ All notable changes to mdview.
 ### Infrastructure
 
 - Release workflow now signs `latest.json` using `TAURI_SIGNING_PRIVATE_KEY` + `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` GitHub secrets, enabling verified updates from v1.0.1 onward.
+- macOS bundles now ad-hoc signed (`APPLE_SIGNING_IDENTITY=-`) — reduces Gatekeeper "damaged" rejection. First-launch still requires **System Settings → Privacy & Security → Open Anyway**, or `xattr -dr com.apple.quarantine /Applications/mdview.app`. Full Apple notarization deferred until Developer Program available.
 
 ## [1.0.0] — 2026-05-18
 

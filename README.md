@@ -20,6 +20,29 @@ Add a folder, see your `.md` files in a sidebar that dims directories without an
 - **Open in browser** — snapshot current preview to a temp HTML and open via system browser
 - **Shortcuts** — `Cmd/Ctrl+S` save, `Cmd/Ctrl+W` close tab, `Cmd/Ctrl+B` bold, `Cmd/Ctrl+I` italic, `Cmd/Ctrl+P` palette
 
+## macOS install note
+
+mdview is **not yet** signed with an Apple Developer ID (no paid Developer Program subscription). The bundle is ad-hoc signed, which means macOS Gatekeeper will block first launch with a "cannot be opened" / "harmful" warning.
+
+Pick one of these to unblock after installing:
+
+**Option A — System Settings (no terminal):**
+
+1. Try to open mdview from `/Applications` (you'll see the warning).
+2. Open **System Settings → Privacy & Security**.
+3. Scroll to the bottom — you'll see *"mdview was blocked..."* → click **Open Anyway**.
+4. Confirm in the next dialog.
+
+**Option B — Terminal one-liner:**
+
+```sh
+xattr -dr com.apple.quarantine /Applications/mdview.app
+```
+
+You only need to do this once per install. Future updates installed via the in-app updater inherit the trust.
+
+If you'd prefer a fully notarized build, the project is set up to opt in once an Apple Developer ID is available; see `.github/workflows/release.yml` for the placeholder env block.
+
 ## Requirements
 
 - Node 18+ and pnpm

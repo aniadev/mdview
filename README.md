@@ -4,6 +4,8 @@ Focused desktop editor for Markdown files inside a project folder. Tauri + Vue 3
 
 Add a folder, see your `.md` files in a sidebar that dims directories without any Markdown, edit them in a split-pane source + GFM preview, jump between files with `Cmd/Ctrl+P`, and export rendered HTML to your default browser.
 
+![mdview-screenshot](./public/screenshot.png)
+
 ## Features
 
 - **Workspace** — single folder, persisted across sessions

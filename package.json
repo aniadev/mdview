@@ -1,0 +1,68 @@
+{
+  "name": "mdview",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Focused desktop editor for Markdown files inside a project folder. Tauri-based, dark+light themes, GFM + math + Mermaid.",
+  "license": "MIT",
+  "author": "mdview",
+  "homepage": "https://github.com/mdview/mdview",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mdview/mdview.git"
+  },
+  "keywords": [
+    "markdown",
+    "editor",
+    "tauri",
+    "vue",
+    "preview",
+    "gfm"
+  ],
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
+    "typecheck": "vue-tsc --noEmit"
+  },
+  "dependencies": {
+    "@codemirror/commands": "^6.10.3",
+    "@codemirror/lang-markdown": "^6.5.0",
+    "@codemirror/language": "^6.12.3",
+    "@codemirror/state": "^6.6.0",
+    "@codemirror/theme-one-dark": "^6.1.3",
+    "@codemirror/view": "^6.43.0",
+    "@tauri-apps/api": "^2",
+    "@tauri-apps/plugin-dialog": "^2",
+    "@tauri-apps/plugin-fs": "^2",
+    "@tauri-apps/plugin-opener": "^2.5.4",
+    "@tauri-apps/plugin-store": "^2",
+    "@vscode/markdown-it-katex": "^1.1.2",
+    "codemirror": "^6.0.2",
+    "fuse.js": "^7.3.0",
+    "highlight.js": "^11.11.1",
+    "katex": "^0.16.47",
+    "markdown-it": "^14.1.1",
+    "markdown-it-anchor": "^9.2.0",
+    "mermaid": "^11.15.0",
+    "pinia": "^2.3.0",
+    "vue": "^3.5.13"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2",
+    "@types/markdown-it": "^14.1.2",
+    "@vitejs/plugin-vue": "^5.2.1",
+    "typescript": "~5.6.2",
+    "vite": "^6.0.3",
+    "vue-tsc": "^2.1.10"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "vue-demi"
+    ]
+  }
+}

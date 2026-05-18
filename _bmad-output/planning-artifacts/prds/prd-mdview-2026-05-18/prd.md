@@ -1,7 +1,7 @@
 ---
 title: "mdview — Markdown Workspace Editor"
 status: final
-version: 1.1.0
+version: 1.2.0
 created: 2026-05-18
 updated: 2026-05-18
 ---
@@ -15,6 +15,8 @@ PRD này dành cho tác giả (developer), contributor tương lai, và downstre
 Nguồn đầu vào: `briefs/brief-mdview-2026-05-18/brief.md` (status: final).
 
 **v1.1.0 changelog (2026-05-18):** Thêm FR-23..FR-29 cho release v1.1.0 — tạo file trong app, multi-root workspace qua `.code-workspace`, Activity Bar, Terminal Panel (basic PTY), và sidebar toggle lên App Header. Assumptions §10 cập nhật: workspace không còn singleton. §5 Non-Goals cập nhật.
+
+**v1.2.0 changelog (2026-05-18):** Thêm FR-32..FR-35 — multi terminal tabs (FR-32, FR-33) và in-app update UX nâng cao (FR-34, FR-35). Terminal Panel layout chuyển sang bottom panel toàn chiều rộng. Auto-update cơ bản đã có từ v1.0.1 (startup check + prompt); v1.2.0 bổ sung manual check và update progress UI. §5 Non-Goals cập nhật.
 
 ---
 
@@ -90,6 +92,8 @@ Build bằng Tauri — bundle nhỏ (~10MB), khởi động nhanh, native trên 
 - **Activity Bar** *(v1.1)* — Thanh icon dọc cạnh trái nhất của app (bên trái Sidebar). Chứa các icon chuyển đổi giữa các view: Folders và Terminal.
 - **Terminal Panel** *(v1.1)* — Vùng embedded terminal emulator (basic PTY) hiển thị khi user chọn icon Terminal trong Activity Bar. Chạy system shell (zsh/bash trên macOS, cmd/PowerShell trên Windows).
 - **App Header** *(v1.1)* — Thanh header trên cùng của app chứa các global control button: Sidebar Toggle, Theme Toggle.
+- **Terminal Tab** *(v1.2)* — Một PTY session riêng biệt trong Terminal Panel, hiển thị như một tab trong tab bar của Terminal Panel. Mỗi Terminal Tab có ID, label (có thể rename), và process shell độc lập.
+- **In-App Updater** *(v1.2)* — Cơ chế kiểm tra và cài đặt bản cập nhật trực tiếp trong app, bao gồm manual check, hiển thị release notes, download progress, và restart prompt. Nền tảng: `tauri-plugin-updater` (startup check đã có từ v1.0.1).
 
 ---
 
@@ -475,6 +479,66 @@ Khi user mở file từ Workspace, Terminal Panel không tự động `cd` — w
 - [ASSUMPTION v1.1: Không có auto-cd theo active file. User tự navigate trong terminal.]
 - [OUT OF SCOPE v1.1: "Open terminal here" từ File Tree context menu.]
 
+#### FR-32: Multi Terminal Tabs (v1.2)
+
+Terminal Panel có tab bar riêng với nút "+" tạo PTY session mới. Mỗi tab = một shell process độc lập.
+
+**Consequences:**
+- Tab bar nằm ở đầu Terminal Panel (trên xterm.js canvas), tương tự editor Tab bar nhưng scope bên trong panel.
+- "+" button tạo terminal tab mới với shell mặc định, working directory = first workspace root (hoặc `$HOME`).
+- Mỗi tab hiển thị label (mặc định: tên shell, ví dụ "zsh 1", "zsh 2").
+- Click tab → switch session; xterm.js re-renders PTY buffer của session đó.
+- Close tab (x): kill PTY process của tab đó (`SIGTERM` → SIGKILL sau 2s). Không ảnh hưởng các tab khác.
+- Khi tab cuối bị close: Terminal Panel còn mở nhưng trống — không tự close panel.
+- Không giới hạn cứng số terminal tabs trong v1.2.
+- [ASSUMPTION v1.2: Không có drag-to-reorder terminal tabs.]
+
+#### FR-33: Terminal Tab Rename (v1.2)
+
+User có thể đổi tên terminal tab để phân biệt sessions.
+
+**Consequences:**
+- Double-click label → inline input, pre-filled tên hiện tại. Enter confirm, Escape cancel.
+- Custom name persist trong session; reset về default sau khi process restart (tab close + open mới).
+- Tên tối đa 30 ký tự (truncate nếu dài hơn).
+- [ASSUMPTION v1.2: Tên không persist qua app restart.]
+
+---
+
+### 4.15 In-App Updater UX (v1.2)
+
+**Mô tả:** Nâng cấp update experience từ basic startup-only check (v1.0.1) lên full in-app update flow: manual check, release notes, download progress, restart prompt. Nền tảng `tauri-plugin-updater` đã có sẵn; v1.2 thêm frontend UX.
+
+**Context:** v1.0.1 đã implement auto-update startup check + basic prompt. v1.2 bổ sung: (1) manual trigger, (2) release notes, (3) progress indicator, (4) dismissable flow.
+
+**Functional Requirements:**
+
+#### FR-34: Manual Update Check
+
+User có thể trigger kiểm tra bản cập nhật thủ công từ trong app, không cần restart.
+
+**Consequences:**
+- Entry point: "Check for Updates" trong App Header (menu dropdown hoặc dedicated button bên cạnh Theme Toggle).
+- Khi click: gọi `tauri-plugin-updater` check endpoint → spinner ngắn.
+- Nếu up to date: toast notification "mdview đang dùng phiên bản mới nhất." (2s, tự dismiss).
+- Nếu có bản mới: mở Update Modal (FR-35).
+- Startup check (v1.0.1) vẫn hoạt động song song — nếu phát hiện update khi startup, mở Update Modal thay vì basic dialog.
+- [ASSUMPTION v1.2: Check endpoint = same GitHub Releases `latest.json` từ v1.0.1.]
+
+#### FR-35: Update Modal — Release Notes + Progress
+
+Update Modal hiển thị thông tin bản cập nhật và quản lý download/install flow.
+
+**Consequences:**
+- Modal gồm: tên phiên bản mới, release notes (markdown rendered, scroll nếu dài), nút "Cập nhật ngay" và "Để sau".
+- Release notes lấy từ GitHub Release body (plain text hoặc markdown). Nếu không có: hiển thị "Không có release notes."
+- Khi click "Cập nhật ngay": progress bar thay thế release notes area, hiển thị % download.
+- Download xong: button đổi thành "Cài đặt & Khởi động lại". Click → install + restart.
+- "Để sau" (hoặc click outside) dismiss modal; app tiếp tục hoạt động bình thường.
+- Nếu download fail: error message inline trong modal, nút "Thử lại".
+- [ASSUMPTION v1.2: Signature verification do `tauri-plugin-updater` handle — không cần UI riêng.]
+- [ASSUMPTION v1.2: Chỉ hiển thị 1 update modal tại một thời điểm dù check được gọi nhiều lần.]
+
 ---
 
 ### 4.14 App Header & Sidebar Toggle (v1.1)
@@ -507,7 +571,7 @@ Button toggle Sidebar (show/hide) nằm trong App Header, bên trái Theme Toggl
 - Vault / knowledge graph / backlinks
 - Plugin system
 - Mobile hoặc web app
-- Auto-update (manual download mỗi release)
+- ~~Auto-update (manual download mỗi release)~~ — startup check shipped v1.0.1, full UX shipped v1.2.0 (FR-34, FR-35)
 - **v1.1 specific non-goals:**
   - Rename folder từ File Tree (chỉ rename file trong v1.1)
   - Custom shell configuration qua UI trong Terminal Panel
@@ -541,11 +605,11 @@ Button toggle Sidebar (show/hide) nằm trong App Header, bên trái Theme Toggl
 - Custom theme (user-defined colors) — deferred v2 `[NOTE FOR PM: high-request feature nếu có user feedback]`
 - Full-text search — deferred v2
 - Image paste/embed — deferred v2
-- Auto-update — deferred v2
+- ~~Auto-update — deferred v2~~ — startup check shipped v1.0.1; full in-app UX shipped v1.2.0
 
 ---
 
-### 6.3 In Scope (v1.1.0)
+### 6.3 In Scope (v1.1.0 — shipped 2026-05-18)
 
 - Tạo file `.md` mới từ File Tree context menu — FR-23
 - Đổi tên file `.md` từ File Tree context menu — FR-30
@@ -560,11 +624,32 @@ Button toggle Sidebar (show/hide) nằm trong App Header, bên trái Theme Toggl
 
 - Rename folder từ File Tree
 - Custom shell config qua UI
-- Split / tab terminal
+- Split / tab terminal *(deferred → v1.2, FR-32)*
 - "Open terminal here" từ context menu
 - Tạo/edit `.code-workspace` từ trong app
-- Auto-update
+- ~~Auto-update~~ *(startup check shipped v1.0.1; full UX → v1.2)*
 - Drag-to-reorder roots
+
+---
+
+### 6.5 In Scope (v1.2.0)
+
+- Multi terminal tabs trong Terminal Panel — FR-32
+- Terminal tab rename — FR-33
+- Manual "Check for Updates" trigger — FR-34
+- Update Modal: release notes + download progress + install flow — FR-35
+- Terminal Panel chuyển sang bottom panel toàn chiều rộng (layout refactor)
+- Activity Bar: Folders toggle sidebar, Terminal toggle bottom panel (independent)
+
+### 6.6 Out of Scope cho v1.2.0
+
+- Drag-to-reorder terminal tabs
+- Terminal tab persist qua app restart
+- Split terminal (side-by-side) trong cùng panel
+- "Open terminal here" từ File Tree context menu
+- Tạo/edit `.code-workspace` từ trong app
+- Custom theme (user-defined colors) — deferred v2
+- Full-text search — deferred v2
 
 ---
 
@@ -618,7 +703,10 @@ Button toggle Sidebar (show/hide) nằm trong App Header, bên trái Theme Toggl
 7. **Custom theme:** chỉ 2 preset. Có nên expose CSS var override hoặc theme JSON ở v2 không? Đánh giá theo demand.
 8. **Terminal shell trên Windows:** cmd.exe vs PowerShell 7 — nên detect `pwsh` nếu có sẵn? [ASSUMPTION v1.1: fallback theo thứ tự pwsh → powershell → cmd]
 9. **Rename/delete file:** ~~Deferred~~ — FR-30 (rename file) và FR-31 (delete file) đã thêm vào v1.1. Rename folder deferred v1.2. Closed.
-10. **Recent .code-workspace files:** Có cần "Open Recent" list cho workspace không? [Deferred — không có trong v1.1]
+10. **Recent .code-workspace files:** Có cần "Open Recent" list cho workspace không? [Deferred — không có trong v1.1 và v1.2]
+11. **Terminal tab persist qua restart:** User có kỳ vọng terminal tabs được restore sau khi relaunch không? [ASSUMPTION v1.2: không restore — evaluate sau v1.2 release.]
+12. **Update release notes source:** GitHub Release body dùng markdown nhưng có thể có HTML. Cần sanitize trước khi render? [ASSUMPTION v1.2: strip unsafe HTML, giữ markdown.]
+13. **Split terminal:** Có cần split terminal (side-by-side) không? [Deferred v1.3+ — tabs là đủ cho v1.2.]
 
 ---
 
@@ -651,3 +739,9 @@ Button toggle Sidebar (show/hide) nằm trong App Header, bên trái Theme Toggl
 - **§4.10/FR-31** — Xóa vĩnh viễn, không dùng Trash/Recycle Bin trong v1.1.
 - **§4.14/FR-29** — Activity Bar vẫn visible khi Sidebar Panel bị toggle-hide.
 - **§9/OQ-8** — Windows terminal shell fallback: pwsh → powershell → cmd.
+- **§4.13/FR-32** — Không drag-to-reorder terminal tabs trong v1.2.
+- **§4.13/FR-33** — Terminal tab name không persist qua app restart. Max 30 ký tự.
+- **§4.15/FR-34** — Update check endpoint = same GitHub Releases `latest.json` từ v1.0.1.
+- **§4.15/FR-34** — Chỉ 1 update modal tại một thời điểm.
+- **§4.15/FR-35** — Signature verification do tauri-plugin-updater handle, không cần UI riêng.
+- **§9/OQ-12** — Release notes: strip unsafe HTML trước khi render markdown.

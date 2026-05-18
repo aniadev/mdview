@@ -1,7 +1,7 @@
 {
   "name": "mdview",
   "private": true,
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Focused desktop editor for Markdown files inside a project folder. Tauri-based, dark+light themes, GFM + math + Mermaid.",
   "license": "MIT",
   "author": "mdview",

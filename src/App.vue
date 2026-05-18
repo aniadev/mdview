@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount, ref, watch } from "vue";
+import { invoke } from "@tauri-apps/api/core";
+import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import AppHeader from "./components/AppHeader.vue";
 import ActivityBar from "./components/ActivityBar.vue";
 import Sidebar from "./components/Sidebar.vue";
@@ -7,18 +9,33 @@ import TabBar from "./components/TabBar.vue";
 import EditorArea from "./components/EditorArea.vue";
 import CommandPalette from "./components/CommandPalette.vue";
 import BottomPanel from "./components/BottomPanel.vue";
+import UpdateModal from "./components/UpdateModal.vue";
+import SettingsModal from "./components/SettingsModal.vue";
 import { useWorkspaceStore } from "./stores/workspace";
 import { useTabsStore } from "./stores/tabs";
 import { usePaletteStore } from "./stores/palette";
 import { useThemeStore } from "./stores/theme";
 import { useUiStore } from "./stores/ui";
-import { checkForUpdate } from "./updater";
+import { useUpdaterStore } from "./stores/updater";
+
+function basename(p: string): string {
+  const parts = p.replace(/\\/g, "/").split("/").filter(Boolean);
+  return parts[parts.length - 1] || p;
+}
+
+async function openExternalMd(path: string) {
+  const tabs = useTabsStore();
+  await tabs.openFile(path, basename(path));
+}
+
+let unlistenOpenFile: UnlistenFn | null = null;
 
 const workspace = useWorkspaceStore();
 const tabs = useTabsStore();
 const palette = usePaletteStore();
 const theme = useThemeStore();
 const ui = useUiStore();
+const updater = useUpdaterStore();
 
 const modKey =
   typeof navigator !== "undefined" && navigator.platform.includes("Mac")
@@ -66,11 +83,26 @@ onMounted(async () => {
   await theme.init();
   await workspace.restoreWorkspace();
   if (workspace.rootPaths.length > 0) await palette.refresh(workspace.rootPaths);
-  void checkForUpdate({ silent: true });
+
+  unlistenOpenFile = await listen<string>("open-file-request", (e) => {
+    void openExternalMd(e.payload);
+  });
+
+  try {
+    const pending = await invoke<string[]>("consume_pending_open_files");
+    for (const p of pending) await openExternalMd(p);
+  } catch (e) {
+    console.error("consume_pending_open_files failed", e);
+  }
+
+  // Startup update check — silent. Modal opens automatically if found.
+  void updater.checkForUpdates({ silent: true });
 });
 
 onBeforeUnmount(() => {
   window.removeEventListener("keydown", onKeydown);
+  unlistenOpenFile?.();
+  unlistenOpenFile = null;
 });
 
 watch(
@@ -111,6 +143,13 @@ watch(
         />
       </div>
       <CommandPalette />
+      <SettingsModal />
+      <UpdateModal />
+      <Teleport to="body">
+        <div v-if="updater.toastMessage" class="update-toast">
+          {{ updater.toastMessage }}
+        </div>
+      </Teleport>
     </div>
   </div>
 </template>

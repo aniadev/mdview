@@ -5,7 +5,7 @@ use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Mutex;
-use tauri::{AppHandle, Emitter, Manager, State};
+use tauri::{AppHandle, Emitter, Manager, RunEvent, State};
 use walkdir::WalkDir;
 
 #[derive(Serialize)]
@@ -519,11 +519,64 @@ fn pty_kill(id: u32, store: State<'_, PtyStore>) -> Result<(), String> {
     Ok(())
 }
 
+// ─── File-association open handling (v1.1) ─────────────────────────────────
+
+#[derive(Default)]
+pub struct PendingOpens {
+    paths: Mutex<Vec<String>>,
+}
+
+fn is_markdown_path(p: &str) -> bool {
+    let lower = p.to_lowercase();
+    lower.ends_with(".md") || lower.ends_with(".markdown")
+}
+
+fn collect_md_paths<I: IntoIterator<Item = String>>(args: I) -> Vec<String> {
+    args.into_iter()
+        .filter(|p| is_markdown_path(p) && Path::new(p).exists())
+        .collect()
+}
+
+fn push_pending(app: &AppHandle, path: String) {
+    if let Some(state) = app.try_state::<PendingOpens>() {
+        if let Ok(mut g) = state.paths.lock() {
+            g.push(path);
+        }
+    }
+}
+
+#[tauri::command]
+fn consume_pending_open_files(state: State<'_, PendingOpens>) -> Vec<String> {
+    if let Ok(mut g) = state.paths.lock() {
+        std::mem::take(&mut *g)
+    } else {
+        Vec::new()
+    }
+}
+
+fn focus_main_window(app: &AppHandle) {
+    if let Some(w) = app.get_webview_window("main") {
+        let _ = w.show();
+        let _ = w.unminimize();
+        let _ = w.set_focus();
+    }
+}
+
 // ─── App entry ─────────────────────────────────────────────────────────────
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let initial_files = collect_md_paths(std::env::args().skip(1));
+
+    let app = tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
+            let mds = collect_md_paths(args.into_iter().skip(1));
+            for p in mds {
+                push_pending(app, p.clone());
+                let _ = app.emit("open-file-request", p);
+            }
+            focus_main_window(app);
+        }))
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_store::Builder::default().build())
@@ -531,6 +584,17 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
         .manage(PtyStore::default())
+        .manage(PendingOpens::default())
+        .setup(move |app| {
+            if !initial_files.is_empty() {
+                if let Some(state) = app.try_state::<PendingOpens>() {
+                    if let Ok(mut g) = state.paths.lock() {
+                        g.extend(initial_files.iter().cloned());
+                    }
+                }
+            }
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             list_dir,
             path_exists,
@@ -546,7 +610,23 @@ pub fn run() {
             pty_write,
             pty_resize,
             pty_kill,
+            consume_pending_open_files,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application");
+
+    app.run(|app_handle, event| {
+        if let RunEvent::Opened { urls } = event {
+            for url in urls {
+                if let Ok(p) = url.to_file_path() {
+                    let path = p.to_string_lossy().to_string();
+                    if is_markdown_path(&path) && p.exists() {
+                        push_pending(app_handle, path.clone());
+                        let _ = app_handle.emit("open-file-request", path);
+                        focus_main_window(app_handle);
+                    }
+                }
+            }
+        }
+    });
 }

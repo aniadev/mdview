@@ -26,6 +26,9 @@ const theme = useThemeStore();
       >
         {{ theme.theme === "dark" ? "☀" : "☾" }}
       </button>
+      <button class="icon-btn" title="Settings" @click="ui.openSettings()">
+        ⚙
+      </button>
     </div>
   </header>
 </template>
@@ -53,5 +56,24 @@ const theme = useThemeStore();
   font-size: 12px;
   color: var(--text-muted);
   user-select: none;
+}
+
+.icon-btn[disabled] {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.spinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--text-muted);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  display: inline-block;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 </style>

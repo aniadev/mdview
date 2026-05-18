@@ -5,6 +5,7 @@ export const useUiStore = defineStore("ui", () => {
   const sidebarVisible = ref(true);
   const bottomPanelVisible = ref(false);
   const bottomPanelHeight = ref(280);
+  const settingsOpen = ref(false);
 
   function toggleSidebar() {
     sidebarVisible.value = !sidebarVisible.value;
@@ -18,12 +19,23 @@ export const useUiStore = defineStore("ui", () => {
     bottomPanelHeight.value = Math.max(120, Math.min(800, h));
   }
 
+  function openSettings() {
+    settingsOpen.value = true;
+  }
+
+  function closeSettings() {
+    settingsOpen.value = false;
+  }
+
   return {
     sidebarVisible,
     bottomPanelVisible,
     bottomPanelHeight,
+    settingsOpen,
     toggleSidebar,
     toggleBottomPanel,
     setBottomPanelHeight,
+    openSettings,
+    closeSettings,
   };
 });

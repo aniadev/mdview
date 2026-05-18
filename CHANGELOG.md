@@ -2,15 +2,37 @@
 
 All notable changes to mdview.
 
+## [1.2.0] — 2026-05-18
+
+### Added
+
+- **Multi terminal tabs** — Terminal Panel tab bar with "+" button to create additional PTY sessions. Each tab is an independent shell process with its own xterm.js buffer. Close a tab kills only that session; closing the last tab leaves the panel open but empty. Double-click a tab label to rename (max 30 chars, session-scoped, not persisted across restarts) (FR-32, FR-33).
+- **In-app update UX** — Upgrades the v1.0.1 startup-check prompt to a full update flow: "Check for Updates" button in App Header triggers a manual check at any time; if an update is found, an Update Modal displays the release notes (markdown rendered, unsafe HTML stripped) and a download progress bar. After download: "Install & Restart" button. "Later" dismisses without blocking. Download failures show an inline retry option (FR-34, FR-35).
+
+### Changed
+
+- **Terminal Panel moved to a VSCode-style bottom panel** (was a sidebar view in v1.1.0). Spans the full width of the work area (sidebar + main); drag the top edge to resize (clamped 120–800px, persisted within session). Toggle with the Activity Bar Terminal icon or `Cmd/Ctrl+\``.
+- **Activity Bar semantics** — Folders icon toggles the Sidebar; Terminal icon toggles the Bottom Panel. Each icon highlights when its panel is visible; panels are independent (Sidebar + Terminal can be open at the same time). The previous `activeView` model is removed from the `ui` store; `bottomPanelVisible` + `bottomPanelHeight` are now first-class state.
+- Layout restructured to `[AppHeader] / [ActivityBar | (Sidebar | Main) over BottomPanel]` so the bottom panel sits under both the sidebar and the editor.
+
+### Fixed
+
+- **Terminal `cwd` race** — `TerminalPanel` now waits up to 2 s for `restoreWorkspace()` to finish before calling `pty_spawn`, so the PTY's working directory matches the first workspace root on cold start instead of falling back to `$HOME` when the user opens the panel quickly.
+- **`.md` file association now actually opens files in mdview.** Previously the OS launched mdview but the file never reached the editor. Three open paths are now wired through to a `tabs.openFile` call:
+  - cold launch with argv `.md` paths (Windows/Linux),
+  - macOS `RunEvent::Opened { urls }` from Finder while the app is already running,
+  - any-platform second-launch via `tauri-plugin-single-instance`.
+  Paths are buffered in a Rust-side `PendingOpens` queue and live-emitted as an `open-file-request` event; the frontend drains the queue on mount and also subscribes to the event. The main window is focused/un-minimized on each open.
+
 ## [1.1.0] — 2026-05-18
 
 ### Added
 
 - **Multi-root workspace via `.code-workspace`** — open VSCode-format workspace files (`{"folders":[{"path":"..."}]}`); roots render as independent top-level sections in the File Tree; relative folder paths resolve against the workspace file's directory; missing roots surface an inline warning instead of failing the load. JSONC comments are tolerated (FR-24, FR-25).
 - **File management from the File Tree** — right-click any folder for "New File", right-click any `.md` file for Rename / Delete. Inline editable rows handle create + rename; Delete uses a native confirm and is permanent (no Trash). Open tabs follow rename and close automatically on delete (FR-23, FR-30, FR-31).
-- **Activity Bar** — 48px left rail with Folders + Terminal icons that toggle the Sidebar and the bottom Terminal Panel respectively. Active panels are highlighted; activity bar stays visible regardless of panel state (FR-26).
-- **Terminal Panel** — VSCode-style bottom panel hosting an embedded `portable-pty` shell rendered with xterm.js. Drag the top edge to resize (120–800px, persisted within session). Toggle with the Activity Bar icon or `Cmd/Ctrl+\``. System shell auto-detected (`$SHELL` on Unix; `pwsh → powershell → cmd` on Windows). Working directory defaults to the first workspace root (or `$HOME`). Session survives panel toggles and is killed on app exit (FR-27, FR-28).
-- **App Header** — global header bar now hosts the Sidebar Toggle (left) and Theme Toggle (right); `Cmd/Ctrl+B` still toggles the sidebar (FR-29, FR-22).
+- **Activity Bar** — 48px left rail with Folders + Terminal icons (in v1.1.0 these switched between Explorer and Terminal *views* inside the Sidebar; reworked in v1.2.0) (FR-26).
+- **Terminal Panel** — embedded `portable-pty` shell rendered with xterm.js. System shell auto-detected (`$SHELL` on Unix; `pwsh → powershell → cmd` on Windows). Working directory defaults to the first workspace root (or `$HOME`). Session survives view switches and is killed on app exit (FR-27, FR-28).
+- **App Header** — global header bar hosts the Sidebar Toggle (left) and Theme Toggle (right); `Cmd/Ctrl+B` still toggles the sidebar (FR-29, FR-22).
 
 ### Changed
 

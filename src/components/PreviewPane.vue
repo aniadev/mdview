@@ -88,7 +88,7 @@ async function runMermaid(seq: number) {
   if (!mermaidInitialized) {
     mermaid.initialize({
       startOnLoad: false,
-      theme: themeStore.theme === "dark" ? "dark" : "default",
+      theme: themeStore.previewTheme === "dark" ? "dark" : "default",
       securityLevel: "loose",
     });
     mermaidInitialized = true;
@@ -139,7 +139,7 @@ function applyHljsTheme(theme: string) {
 }
 
 watch(
-  () => themeStore.theme,
+  () => themeStore.previewTheme,
   (t) => {
     applyHljsTheme(t);
     mermaidInitialized = false;
@@ -190,7 +190,7 @@ watch(html, async () => {
 });
 
 onMounted(() => {
-  applyHljsTheme(themeStore.theme);
+  applyHljsTheme(themeStore.previewTheme);
   resizeObs = new ResizeObserver(() => applyScroll());
   if (root.value) {
     bodyEl = root.value.querySelector<HTMLElement>(".markdown-body");
@@ -200,13 +200,13 @@ onMounted(() => {
 
 function buildStandaloneHtml(title: string): string {
   const bodyHtml = bodyEl ? bodyEl.innerHTML : html.value;
-  const hljsCss = themeStore.theme === "dark" ? hljsDarkCss : hljsLightCss;
+  const hljsCss = themeStore.previewTheme === "dark" ? hljsDarkCss : hljsLightCss;
   const escapedTitle = title
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
   return `<!doctype html>
-<html data-theme="${themeStore.theme}">
+<html data-theme="${themeStore.previewTheme}">
 <head>
 <meta charset="utf-8">
 <title>${escapedTitle}</title>
@@ -255,15 +255,45 @@ const isEmpty = computed(() => !props.source || props.source.trim() === "");
 </script>
 
 <template>
-  <div ref="root" class="preview-pane">
-    <div v-if="isEmpty" class="preview-empty">Preview will appear here.</div>
-    <div v-else class="markdown-body" v-html="html"></div>
+  <div class="preview-wrap">
+    <div class="preview-toolbar">
+      <span class="tb-spacer"></span>
+      <button
+        class="icon-btn"
+        :title="themeStore.previewTheme === 'dark' ? 'Switch preview to light' : 'Switch preview to dark'"
+        @click="themeStore.togglePreviewTheme()"
+      >
+        {{ themeStore.previewTheme === "dark" ? "☀" : "☾" }}
+      </button>
+    </div>
+    <div ref="root" class="preview-pane" :data-theme="themeStore.previewTheme">
+      <div v-if="isEmpty" class="preview-empty">Preview will appear here.</div>
+      <div v-else class="markdown-body" v-html="html"></div>
+    </div>
   </div>
 </template>
 
 <style>
-.preview-pane {
+.preview-wrap {
+  display: flex;
+  flex-direction: column;
   height: 100%;
+  width: 100%;
+  min-height: 0;
+}
+
+.preview-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 6px;
+  background: var(--bg-tab-bar);
+  border-bottom: 1px solid var(--border);
+  flex: 0 0 auto;
+}
+
+.preview-pane {
+  flex: 1;
   width: 100%;
   overflow: auto;
   padding: 24px 32px;
@@ -273,6 +303,29 @@ const isEmpty = computed(() => !props.source || props.source.trim() === "");
   font-size: 14px;
   line-height: 1.6;
   user-select: text;
+}
+
+/* scoped CSS vars so preview theme is independent of app theme */
+.preview-pane[data-theme="dark"] {
+  --bg-app: #1e1e1e;
+  --bg-sidebar: #252526;
+  --bg-hover: #2a2d2e;
+  --bg-code: #0d1117;
+  --border: #3c3c3c;
+  --text: #cccccc;
+  --text-muted: #858585;
+  --link: #4daafc;
+}
+
+.preview-pane[data-theme="light"] {
+  --bg-app: #ffffff;
+  --bg-sidebar: #f3f3f3;
+  --bg-hover: #e8e8e8;
+  --bg-code: #f6f8fa;
+  --border: #d4d4d4;
+  --text: #333333;
+  --text-muted: #6e6e6e;
+  --link: #0366d6;
 }
 
 .preview-empty {

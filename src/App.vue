@@ -8,12 +8,14 @@ import { useWorkspaceStore } from "./stores/workspace";
 import { useTabsStore } from "./stores/tabs";
 import { usePaletteStore } from "./stores/palette";
 import { useThemeStore } from "./stores/theme";
+import { useUiStore } from "./stores/ui";
 import { checkForUpdate } from "./updater";
 
 const workspace = useWorkspaceStore();
 const tabs = useTabsStore();
 const palette = usePaletteStore();
 const theme = useThemeStore();
+const ui = useUiStore();
 
 const modKey =
   typeof navigator !== "undefined" && navigator.platform.includes("Mac")
@@ -34,6 +36,12 @@ function onKeydown(e: KeyboardEvent) {
   } else if (key === "w") {
     e.preventDefault();
     void tabs.closeActive();
+  } else if (key === "b") {
+    const inCm = (document.activeElement as HTMLElement | null)?.closest?.(".cm-editor");
+    if (!inCm) {
+      e.preventDefault();
+      ui.toggleSidebar();
+    }
   }
 }
 
@@ -59,7 +67,7 @@ watch(
 
 <template>
   <div class="app-shell">
-    <Sidebar />
+    <Sidebar v-show="ui.sidebarVisible" />
     <main class="main-area">
       <div v-if="workspace.error" class="error-banner">
         <span>{{ workspace.error }}</span>

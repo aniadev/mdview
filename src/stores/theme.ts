@@ -6,9 +6,11 @@ export type Theme = "dark" | "light";
 
 const STORE_FILE = "mdview-settings.json";
 const KEY_THEME = "theme";
+const KEY_PREVIEW_THEME = "preview_theme";
 
 export const useThemeStore = defineStore("theme", () => {
   const theme = ref<Theme>("dark");
+  const previewTheme = ref<Theme>("dark");
   let store: Store | null = null;
   let initialized = false;
 
@@ -28,6 +30,8 @@ export const useThemeStore = defineStore("theme", () => {
     const saved = await s.get<Theme>(KEY_THEME);
     if (saved === "dark" || saved === "light") theme.value = saved;
     apply(theme.value);
+    const savedPreview = await s.get<Theme>(KEY_PREVIEW_THEME);
+    if (savedPreview === "dark" || savedPreview === "light") previewTheme.value = savedPreview;
   }
 
   async function setTheme(t: Theme) {
@@ -42,7 +46,15 @@ export const useThemeStore = defineStore("theme", () => {
     await setTheme(theme.value === "dark" ? "light" : "dark");
   }
 
+  async function togglePreviewTheme() {
+    const next: Theme = previewTheme.value === "dark" ? "light" : "dark";
+    previewTheme.value = next;
+    const s = await getStore();
+    await s.set(KEY_PREVIEW_THEME, next);
+    await s.save();
+  }
+
   watch(theme, (t) => apply(t));
 
-  return { theme, init, setTheme, toggle };
+  return { theme, previewTheme, init, setTheme, toggle, togglePreviewTheme };
 });

@@ -16,9 +16,12 @@ Add a folder, see your `.md` files in a sidebar that dims directories without an
 - **Math** — KaTeX (`$inline$`, `$$block$$`)
 - **Mermaid** — fenced ```` ```mermaid ```` diagrams, lazy-loaded
 - **Themes** — dark (default) and light, persisted
+- **Preview theme** — independent dark/light toggle for the preview pane, persisted separately
 - **Command Palette** — `Cmd/Ctrl+P`, fuzzy match on basename
 - **Open in browser** — snapshot current preview to a temp HTML and open via system browser
-- **Shortcuts** — `Cmd/Ctrl+S` save, `Cmd/Ctrl+W` close tab, `Cmd/Ctrl+B` bold, `Cmd/Ctrl+I` italic, `Cmd/Ctrl+P` palette
+- **Sidebar toggle** — hide/show the file-tree sidebar via `Cmd/Ctrl+B` or the ◀/▶ button in the tab bar
+- **Tab context menu** — right-click any tab to Close or Close All Tabs
+- **Shortcuts** — `Cmd/Ctrl+S` save, `Cmd/Ctrl+W` close tab, `Cmd/Ctrl+B` sidebar toggle, `Cmd/Ctrl+I` italic, `Cmd/Ctrl+P` palette
 
 ## macOS install note
 
@@ -64,18 +67,28 @@ pnpm tauri:build:mac          # macOS .app + .dmg (current arch)
 pnpm tauri:build:mac-universal # macOS universal (x86_64 + arm64)
 pnpm tauri:build:win          # Windows x64 NSIS + MSI (requires Windows host or cross-compile setup)
 pnpm tauri:build:win-arm      # Windows arm64 NSIS + MSI
+pnpm tauri:build:linux        # Ubuntu/Debian — AppImage + .deb (x86_64, requires Linux host)
 ```
 
 Artifacts land in `src-tauri/target/<triple>/release/bundle/`.
 
-### Cross-compile for Windows from macOS / Linux
+### Cross-compile notes
 
-Native Windows installers (NSIS / MSI) generally need a Windows host or [`cargo-xwin`](https://github.com/rust-cross/cargo-xwin). The provided `tauri:build:win` script assumes a Windows toolchain is installed. The recommended workflow is to run it on Windows or in GitHub Actions with a `windows-latest` runner.
+**Windows:** Native NSIS / MSI installers generally need a Windows host or [`cargo-xwin`](https://github.com/rust-cross/cargo-xwin). The provided `tauri:build:win` script assumes a Windows toolchain is installed. The recommended workflow is to run it on Windows or in GitHub Actions with a `windows-latest` runner.
+
+**Linux:** `tauri:build:linux` requires a Linux host with the Tauri 2 system dependencies for your distribution. On Ubuntu/Debian:
+
+```sh
+sudo apt update && sudo apt install -y \
+  libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+```
+
+Rust target must also be added: `rustup target add x86_64-unknown-linux-gnu`. For cross-compilation from macOS/Windows, use GitHub Actions with an `ubuntu-latest` runner.
 
 ### GitHub Actions
 
 - `.github/workflows/ci.yml` — typecheck + frontend build + Rust check + clippy on every push / PR to `main`.
-- `.github/workflows/release.yml` — triggered by a `v*` tag push or manual `workflow_dispatch` (provide the tag). Matrix builds **macOS universal**, **Windows x64**, and **Windows arm64** via `tauri-apps/tauri-action`, uploads installers to a **draft** GitHub Release.
+- `.github/workflows/release.yml` — triggered by a `v*` tag push or manual `workflow_dispatch` (provide the tag). Matrix builds **macOS universal**, **Windows x64**, **Windows arm64**, and **Ubuntu x64** via `tauri-apps/tauri-action`, uploads installers to a **draft** GitHub Release.
 
 To cut a release:
 

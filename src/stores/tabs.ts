@@ -108,6 +108,19 @@ export const useTabsStore = defineStore("tabs", () => {
     if (activePath.value) await closeTab(activePath.value);
   }
 
+  async function closeAllTabs(): Promise<void> {
+    const dirty = tabs.value.filter(isDirty);
+    if (dirty.length > 0) {
+      const ok = await confirm(
+        `${dirty.length} file${dirty.length > 1 ? "s have" : " has"} unsaved changes. Close all without saving?`,
+        { title: "Close all tabs", kind: "warning" }
+      );
+      if (!ok) return;
+    }
+    tabs.value = [];
+    activePath.value = null;
+  }
+
   return {
     tabs,
     activePath,
@@ -120,6 +133,7 @@ export const useTabsStore = defineStore("tabs", () => {
     saveActive,
     closeTab,
     closeActive,
+    closeAllTabs,
     setActive,
   };
 });

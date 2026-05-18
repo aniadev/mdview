@@ -2,6 +2,15 @@
 
 All notable changes to mdview.
 
+## [1.1.0] — 2026-05-18
+
+### Added
+
+- **Tab context menu** — right-click any tab header to Close the tab or Close All Tabs. The close-all action prompts if any open files have unsaved changes.
+- **Preview pane theme toggle** — independent dark/light control for the preview pane (☀/☾ button in the preview toolbar), persisted separately from the editor theme. Affects syntax highlighting, Mermaid diagram theme, and browser-export HTML.
+- **Sidebar toggle** — hide/show the primary sidebar via `Cmd/Ctrl+B` or the ◀/▶ button at the left edge of the tab bar. `Cmd+B` in the CodeMirror editor still performs bold formatting; sidebar toggle fires only when the editor is not focused.
+- **Ubuntu/Linux build** — `pnpm tauri:build:linux` produces AppImage + `.deb` for x86\_64 Linux. See README for host prerequisites.
+
 ## [1.0.1] — 2026-05-18
 
 ### Fixed

@@ -55,6 +55,11 @@
     "macOS": {
       "minimumSystemVersion": "12.0"
     },
+    "linux": {
+      "deb": {
+        "depends": []
+      }
+    },
     "windows": {
       "wix": {
         "language": "en-US"

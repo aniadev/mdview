@@ -58,6 +58,22 @@ function isAbsolute(p: string): boolean {
   return /^([a-z]+:\/\/|data:|\/|[A-Za-z]:[\\/])/.test(p);
 }
 
+function joinAndNormalize(base: string, rel: string): string {
+  const normBase = base.replace(/\\/g, "/");
+  const normRel = rel.replace(/\\/g, "/");
+  const isUnix = normBase.startsWith("/") || !/^[A-Za-z]:/.test(normBase);
+  const winDrive = !isUnix ? normBase.slice(0, 2) : "";
+  const baseBody = !isUnix ? normBase.slice(2) : normBase;
+  const baseParts = baseBody.split("/").filter(Boolean);
+  for (const p of normRel.split("/")) {
+    if (p === "" || p === ".") continue;
+    if (p === "..") baseParts.pop();
+    else baseParts.push(p);
+  }
+  const leader = isUnix ? "/" : `${winDrive}/`;
+  return leader + baseParts.join("/");
+}
+
 const html = ref("");
 let debounceTimer: number | null = null;
 let mermaidInitialized = false;
@@ -91,7 +107,7 @@ async function render() {
     /<img\s+([^>]*?)src="([^"]+)"([^>]*)>/g,
     (_m, pre: string, src: string, post: string) => {
       if (!src || isAbsolute(src)) return `<img ${pre}src="${src}"${post}>`;
-      const joined = baseDir ? `${baseDir}/${src}` : src;
+      const joined = baseDir ? joinAndNormalize(baseDir, src) : src;
       const url = convertFileSrc(joined);
       return `<img ${pre}src="${url}"${post}>`;
     }

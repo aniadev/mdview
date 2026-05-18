@@ -54,6 +54,15 @@
     "windows": {
       "wix": {
         "language": "en-US"
+      },
+      "nsis": {
+        "installMode": "perMachine",
+        "languages": ["English", "Vietnamese"],
+        "displayLanguageSelector": true,
+        "installerIcon": "icons/icon.ico"
+      },
+      "webviewInstallMode": {
+        "type": "embedBootstrapper"
       }
     }
   }

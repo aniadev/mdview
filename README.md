@@ -34,10 +34,42 @@ pnpm tauri:dev
 ## Build installer
 
 ```sh
-pnpm tauri:build
+pnpm tauri:build              # current platform, default bundle targets
+pnpm tauri:build:mac          # macOS .app + .dmg (current arch)
+pnpm tauri:build:mac-universal # macOS universal (x86_64 + arm64)
+pnpm tauri:build:win          # Windows x64 NSIS + MSI (requires Windows host or cross-compile setup)
+pnpm tauri:build:win-arm      # Windows arm64 NSIS + MSI
 ```
 
-Artifacts land in `src-tauri/target/release/bundle/`.
+Artifacts land in `src-tauri/target/<triple>/release/bundle/`.
+
+### Cross-compile for Windows from macOS / Linux
+
+Native Windows installers (NSIS / MSI) generally need a Windows host or [`cargo-xwin`](https://github.com/rust-cross/cargo-xwin). The provided `tauri:build:win` script assumes a Windows toolchain is installed. The recommended workflow is to run it on Windows or in GitHub Actions with a `windows-latest` runner.
+
+### GitHub Actions
+
+- `.github/workflows/ci.yml` — typecheck + frontend build + Rust check + clippy on every push / PR to `main`.
+- `.github/workflows/release.yml` — triggered by a `v*` tag push or manual `workflow_dispatch` (provide the tag). Matrix builds **macOS universal**, **Windows x64**, and **Windows arm64** via `tauri-apps/tauri-action`, uploads installers to a **draft** GitHub Release.
+
+To cut a release:
+
+```sh
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+Then publish the draft release on GitHub once artifacts are uploaded.
+
+### Regenerate icons
+
+Source icon: `public/mdview.png`.
+
+```sh
+pnpm icons
+```
+
+Regenerates all platform icons into `src-tauri/icons/`.
 
 ## Layout
 

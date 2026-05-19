@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount } from "vue";
+import { Icon } from "@iconify/vue";
 import { useTabsStore } from "../stores/tabs";
 
 const tabs = useTabsStore();
@@ -60,7 +61,7 @@ onBeforeUnmount(() => window.removeEventListener("click", onWindowClick));
           @click="onCloseClick($event, tab.path)"
           title="Close (Cmd/Ctrl+W)"
         >
-          ×
+          <Icon icon="lucide:x" width="12" height="12" />
         </button>
       </div>
     </div>

@@ -90,8 +90,7 @@ button.primary:hover {
 }
 
 .sidebar {
-  width: var(--sidebar-width);
-  min-width: 180px;
+  min-width: 140px;
   background: var(--bg-sidebar);
   border-right: 1px solid var(--border);
   display: flex;

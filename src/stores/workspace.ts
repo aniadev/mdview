@@ -1,7 +1,7 @@
 import { defineStore } from "pinia";
 import { ref, computed } from "vue";
 import { invoke } from "@tauri-apps/api/core";
-import { open } from "@tauri-apps/plugin-dialog";
+import { open, save } from "@tauri-apps/plugin-dialog";
 import { load, Store } from "@tauri-apps/plugin-store";
 import type {
   CodeWorkspace,
@@ -286,6 +286,25 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     return newPath;
   }
 
+  async function createDir(
+    parentDir: string,
+    name: string
+  ): Promise<string> {
+    const trimmed = name.trim();
+    if (!trimmed) throw new Error("empty folder name");
+    if (trimmed.includes("/") || trimmed.includes("\\")) {
+      throw new Error("folder name cannot contain path separators");
+    }
+    const target = `${parentDir.replace(/\\/g, "/")}/${trimmed}`;
+    const newPath = await invoke<string>("create_dir", { path: target });
+    const parentNode = findNodeByPath(parentDir);
+    if (parentNode) await refreshNodeChildren(parentNode);
+    else await refreshRoot(parentDir);
+    const newNode = findNodeByPath(newPath);
+    if (newNode) await toggleDir(newNode);
+    return newPath;
+  }
+
   async function renameMdFile(
     oldPath: string,
     newFilename: string
@@ -304,6 +323,88 @@ export const useWorkspaceStore = defineStore("workspace", () => {
   async function deleteMdFile(path: string): Promise<void> {
     await invoke("delete_file", { path });
     await refreshParentOf(path);
+  }
+
+  function dirname(p: string): string {
+    const norm = p.replace(/\\/g, "/");
+    const idx = norm.lastIndexOf("/");
+    return idx > 0 ? norm.slice(0, idx) : norm;
+  }
+
+  function relativize(target: string, base: string): string {
+    const t = target.replace(/\\/g, "/").split("/").filter(Boolean);
+    const b = base.replace(/\\/g, "/").split("/").filter(Boolean);
+    let common = 0;
+    while (common < t.length && common < b.length && t[common] === b[common]) common++;
+    if (common === 0) return target;
+    const up = b.length - common;
+    const down = t.slice(common);
+    if (up === 0 && down.length === 0) return ".";
+    const parts = Array(up).fill("..").concat(down);
+    return parts.join("/");
+  }
+
+  function serializeWorkspace(filePath: string): string {
+    const baseDir = dirname(filePath);
+    const folders = roots.value.map((r) => {
+      const rel = relativize(r.path, baseDir);
+      const usable =
+        rel && !rel.startsWith("..") && rel.length < r.path.length ? rel : r.path;
+      return { name: r.name, path: usable };
+    });
+    return JSON.stringify({ folders }, null, 2) + "\n";
+  }
+
+  async function saveCurrentWorkspace(): Promise<boolean> {
+    if (!workspaceFile.value) return false;
+    const json = serializeWorkspace(workspaceFile.value);
+    await invoke("write_text", { path: workspaceFile.value, contents: json });
+    return true;
+  }
+
+  async function saveAsNewWorkspace(): Promise<boolean> {
+    const selected = await save({
+      title: "Save Workspace As",
+      defaultPath: "workspace.code-workspace",
+      filters: [{ name: "Workspace", extensions: ["code-workspace"] }],
+    });
+    if (!selected || typeof selected !== "string") return false;
+    const json = serializeWorkspace(selected);
+    await invoke("write_text", { path: selected, contents: json });
+    workspaceFile.value = selected;
+    const s = await getStore();
+    await s.set(KEY_WORKSPACE_FILE, selected);
+    await s.delete(KEY_WORKSPACE_PATH);
+    await s.save();
+    return true;
+  }
+
+  async function addFolderToCurrentWorkspace(): Promise<void> {
+    const folder = await open({
+      directory: true,
+      multiple: false,
+      title: "Add folder to workspace",
+    });
+    if (!folder || typeof folder !== "string") return;
+    if (roots.value.some((r) => r.path === folder)) return;
+    const root = await loadSingleRoot(folder);
+    roots.value.push(root);
+    if (workspaceFile.value) {
+      try {
+        await saveCurrentWorkspace();
+      } catch (e) {
+        error.value = String(e);
+      }
+    } else {
+      const s = await getStore();
+      if (roots.value.length === 1) {
+        await s.set(KEY_WORKSPACE_PATH, folder);
+        await s.save();
+      } else {
+        await s.delete(KEY_WORKSPACE_PATH);
+        await s.save();
+      }
+    }
   }
 
   return {
@@ -326,7 +427,11 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     refreshRoot,
     refreshParentOf,
     createMdFile,
+    createDir,
     renameMdFile,
     deleteMdFile,
+    addFolderToCurrentWorkspace,
+    saveCurrentWorkspace,
+    saveAsNewWorkspace,
   };
 });

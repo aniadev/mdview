@@ -1,17 +1,21 @@
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount, ref } from "vue";
+import { Icon } from "@iconify/vue";
 import { confirm } from "@tauri-apps/plugin-dialog";
 import { useWorkspaceStore } from "../stores/workspace";
 import { useTabsStore } from "../stores/tabs";
 import { useFsUiStore } from "../stores/fsui";
+import { useUiStore } from "../stores/ui";
 import FileTreeNode from "./FileTreeNode.vue";
 import InlineFilenameInput from "./InlineFilenameInput.vue";
 
 const workspace = useWorkspaceStore();
 const tabs = useTabsStore();
 const fsui = useFsUiStore();
+const ui = useUiStore();
 
 const rootInputRef = ref<InstanceType<typeof InlineFilenameInput> | null>(null);
+const rootDirInputRef = ref<InstanceType<typeof InlineFilenameInput> | null>(null);
 
 function onWindowClick() {
   if (fsui.ctxMenu.visible) fsui.closeContextMenu();
@@ -22,6 +26,15 @@ onBeforeUnmount(() => window.removeEventListener("click", onWindowClick));
 
 async function ctxNewFile() {
   fsui.requestCreateIn(
+    fsui.ctxMenu.isDir
+      ? fsui.ctxMenu.targetPath
+      : parentOf(fsui.ctxMenu.targetPath)
+  );
+  fsui.closeContextMenu();
+}
+
+async function ctxNewFolder() {
+  fsui.requestCreateDirIn(
     fsui.ctxMenu.isDir
       ? fsui.ctxMenu.targetPath
       : parentOf(fsui.ctxMenu.targetPath)
@@ -65,17 +78,35 @@ async function onRootCreateCommit(rootPath: string, filename: string) {
   try {
     const newPath = await workspace.createMdFile(rootPath, filename);
     fsui.cancelInputs();
-    const name = filename.toLowerCase().endsWith(".md")
-      ? filename
-      : `${filename}.md`;
-    await tabs.openFile(newPath, name);
+    const base = newPath.replace(/\\/g, "/").split("/").pop() ?? filename;
+    await tabs.openFile(newPath, base);
   } catch (e) {
     rootInputRef.value?.setError(String(e));
   }
 }
 
+async function onRootCreateDirCommit(rootPath: string, name: string) {
+  try {
+    await workspace.createDir(rootPath, name);
+    fsui.cancelInputs();
+  } catch (e) {
+    rootDirInputRef.value?.setError(String(e));
+  }
+}
+
 function startRootCreate(rootPath: string) {
-  fsui.requestCreateIn(rootPath);
+  const activeFilePath = tabs.activeTab?.path?.replace(/\\/g, "/");
+  const normalizedRoot = rootPath.replace(/\\/g, "/");
+  if (activeFilePath?.startsWith(normalizedRoot + "/")) {
+    const lastSlash = activeFilePath.lastIndexOf("/");
+    fsui.requestCreateIn(activeFilePath.slice(0, lastSlash));
+  } else {
+    fsui.requestCreateIn(rootPath);
+  }
+}
+
+function startRootCreateDir(rootPath: string) {
+  fsui.requestCreateDirIn(rootPath);
 }
 </script>
 
@@ -95,18 +126,53 @@ function startRootCreate(rootPath: string) {
           title="Add folder or .code-workspace"
           @click="workspace.addWorkspace()"
         >
-          +
+          <Icon icon="lucide:plus" width="14" height="14" />
         </button>
-        <button
-          v-else
-          class="icon-btn"
-          title="Close workspace"
-          @click="workspace.removeWorkspace()"
-        >
-          ×
-        </button>
+        <template v-else>
+          <button
+            class="icon-btn"
+            title="Add Folder to Workspace"
+            @click="workspace.addFolderToCurrentWorkspace()"
+          >
+            <Icon icon="lucide:folder-plus" width="14" height="14" />
+          </button>
+          <button
+            v-if="!workspace.workspaceFile"
+            class="icon-btn"
+            title="Save as Workspace…"
+            @click="workspace.saveAsNewWorkspace()"
+          >
+            <Icon icon="lucide:save" width="14" height="14" />
+          </button>
+          <button
+            class="icon-btn"
+            title="Close workspace"
+            @click="workspace.removeWorkspace()"
+          >
+            <Icon icon="lucide:x" width="14" height="14" />
+          </button>
+        </template>
       </div>
     </header>
+
+    <div class="sidebar-activity-row">
+      <button
+        class="activity-btn"
+        :class="{ active: ui.bottomPanelVisible }"
+        title="Toggle Terminal (Cmd/Ctrl+`)"
+        @click="ui.toggleBottomPanel()"
+      >
+        <Icon icon="lucide:terminal" width="14" height="14" />
+        <span>Terminal</span>
+      </button>
+      <button
+        class="activity-btn"
+        title="Collapse Sidebar (Cmd/Ctrl+B)"
+        @click="ui.toggleSidebar()"
+      >
+        <Icon icon="lucide:panel-left-close" width="14" height="14" />
+      </button>
+    </div>
 
     <div class="sidebar-body">
       <div v-if="!workspace.hasWorkspace" class="sidebar-empty">
@@ -133,13 +199,22 @@ function startRootCreate(rootPath: string) {
           >
             <div class="ws-root-header">
               <span class="ws-root-name" :title="root.path">{{ root.name }}</span>
-              <button
-                class="icon-btn ws-root-add"
-                title="New file in this root"
-                @click="startRootCreate(root.path)"
-              >
-                +
-              </button>
+              <span class="ws-root-actions">
+                <button
+                  class="icon-btn ws-root-add"
+                  title="New file in this root"
+                  @click="startRootCreate(root.path)"
+                >
+                  <Icon icon="lucide:file-plus" width="14" height="14" />
+                </button>
+                <button
+                  class="icon-btn ws-root-add"
+                  title="New folder in this root"
+                  @click="startRootCreateDir(root.path)"
+                >
+                  <Icon icon="lucide:folder-plus" width="14" height="14" />
+                </button>
+              </span>
             </div>
             <div
               v-if="root.loadError"
@@ -158,6 +233,18 @@ function startRootCreate(rootPath: string) {
                   :depth="0"
                   placeholder="filename.md"
                   @commit="(v) => onRootCreateCommit(root.path, v)"
+                  @cancel="fsui.cancelInputs()"
+                />
+              </li>
+              <li
+                v-if="fsui.pendingCreateDirInDir === root.path"
+                class="tree-node"
+              >
+                <InlineFilenameInput
+                  ref="rootDirInputRef"
+                  :depth="0"
+                  placeholder="folder-name"
+                  @commit="(v) => onRootCreateDirCommit(root.path, v)"
                   @cancel="fsui.cancelInputs()"
                 />
               </li>
@@ -190,6 +277,9 @@ function startRootCreate(rootPath: string) {
         <button v-if="fsui.ctxMenu.isDir" class="ctx-item" @click="ctxNewFile">
           New File
         </button>
+        <button v-if="fsui.ctxMenu.isDir" class="ctx-item" @click="ctxNewFolder">
+          New Folder
+        </button>
         <button
           v-if="fsui.ctxMenu.isMdFile"
           class="ctx-item"
@@ -217,6 +307,44 @@ function startRootCreate(rootPath: string) {
   overflow: hidden;
 }
 
+.sidebar-activity-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-tab-bar);
+}
+
+.sidebar-activity-row .activity-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-muted);
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.sidebar-activity-row .activity-btn:hover {
+  color: var(--text);
+  background: var(--bg-app);
+}
+
+.sidebar-activity-row .activity-btn.active {
+  color: var(--text);
+  background: var(--bg-app);
+}
+
+.sidebar-activity-row .activity-btn:last-child {
+  margin-left: auto;
+}
+
 .ws-root {
   margin-bottom: 4px;
 }
@@ -237,6 +365,12 @@ function startRootCreate(rootPath: string) {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-weight: 600;
+}
+
+.ws-root-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
 }
 
 .ws-root-add {

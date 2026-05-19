@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
+import { Icon } from "@iconify/vue";
 import type { TreeNode } from "../types";
 import { useWorkspaceStore } from "../stores/workspace";
 import { useTabsStore } from "../stores/tabs";
@@ -31,6 +32,13 @@ const showCreateChild = computed(
     fsui.pendingCreateInDir === props.node.path
 );
 
+const showCreateDirChild = computed(
+  () =>
+    props.node.is_dir &&
+    props.node.expanded &&
+    fsui.pendingCreateDirInDir === props.node.path
+);
+
 const showRename = computed(() => fsui.pendingRenamePath === props.node.path);
 
 async function onRowClick() {
@@ -57,8 +65,19 @@ async function onCreateCommit(filename: string) {
     if (!props.node.expanded) await workspace.toggleDir(props.node);
     const newPath = await workspace.createMdFile(parent, filename);
     fsui.cancelInputs();
-    const name = filename.toLowerCase().endsWith(".md") ? filename : `${filename}.md`;
-    await tabs.openFile(newPath, name);
+    const base = newPath.replace(/\\/g, "/").split("/").pop() ?? filename;
+    await tabs.openFile(newPath, base);
+  } catch (e) {
+    inputRef.value?.setError(String(e));
+  }
+}
+
+async function onCreateDirCommit(name: string) {
+  const parent = props.node.path;
+  try {
+    if (!props.node.expanded) await workspace.toggleDir(props.node);
+    await workspace.createDir(parent, name);
+    fsui.cancelInputs();
   } catch (e) {
     inputRef.value?.setError(String(e));
   }
@@ -90,12 +109,12 @@ async function onRenameCommit(filename: string) {
         @contextmenu="onContextMenu"
       >
         <span class="tree-chevron">
-          <template v-if="node.is_dir">{{ node.expanded ? "▾" : "▸" }}</template>
+          <Icon v-if="node.is_dir" :icon="node.expanded ? 'lucide:chevron-down' : 'lucide:chevron-right'" width="12" height="12" />
         </span>
         <span class="tree-icon">
-          <template v-if="node.is_dir">{{ node.expanded ? "📂" : "📁" }}</template>
-          <template v-else-if="isMdFile">📄</template>
-          <template v-else>·</template>
+          <Icon v-if="node.is_dir" :icon="node.expanded ? 'lucide:folder-open' : 'lucide:folder'" width="14" height="14" />
+          <Icon v-else-if="isMdFile" icon="lucide:file-text" width="14" height="14" />
+          <Icon v-else icon="lucide:file" width="14" height="14" />
         </span>
         <span class="tree-name">{{ node.name }}</span>
       </div>
@@ -112,7 +131,7 @@ async function onRenameCommit(filename: string) {
     </template>
 
     <ul
-      v-if="node.is_dir && node.expanded && (node.children || showCreateChild)"
+      v-if="node.is_dir && node.expanded && (node.children || showCreateChild || showCreateDirChild)"
       class="tree-children"
     >
       <li v-if="showCreateChild" class="tree-node">
@@ -121,6 +140,15 @@ async function onRenameCommit(filename: string) {
           :depth="depth + 1"
           placeholder="filename.md"
           @commit="onCreateCommit"
+          @cancel="fsui.cancelInputs()"
+        />
+      </li>
+      <li v-if="showCreateDirChild" class="tree-node">
+        <InlineFilenameInput
+          ref="inputRef"
+          :depth="depth + 1"
+          placeholder="folder-name"
+          @commit="onCreateDirCommit"
           @cancel="fsui.cancelInputs()"
         />
       </li>

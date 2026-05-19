@@ -77,3 +77,126 @@ CodeMirror 6 with `@codemirror/lang-markdown` + `@codemirror/theme-one-dark`. To
 ## macOS signing
 
 The macOS build is **ad-hoc signed** (no Apple Developer ID). First-launch users hit Gatekeeper and must use System Settings → Privacy & Security → "Open Anyway", or `xattr -dr com.apple.quarantine /Applications/mdview.app`. The release workflow has placeholder env vars for notarization that can be filled in once a Developer ID is available.
+
+---
+
+## Icons
+
+All icons use **Lucide** via `@iconify/vue`. The full icon set is registered offline at startup (`src/main.ts` calls `addCollection(lucideData)` — no CDN fetches). Use `<Icon icon="lucide:<name>" width="N" height="N" />` in any component. No additional setup needed for new icons; just pick a name from the Lucide catalog.
+
+Common sizes in use: `12` (tree chevrons, tab close), `14` (toolbar, tree icons, inline buttons), `16` (header buttons, modal close), `22` (Activity Bar).
+
+## v1.3.0 Roadmap
+
+### Bug fixes
+
+#### BUG-1: Updater "could not fetch a valid release JSON from remote"
+
+**Root cause**: `.github/workflows/release.yml` sets `releaseDraft: true`. GitHub's `releases/latest` URL does **not** serve assets from draft releases — the updater endpoint `https://github.com/aniadev/mdview/releases/latest/download/latest.json` returns 404 until the draft is manually published. `tauri-action@v0` does generate `latest.json` automatically for Tauri v2, but it's unreachable while the release is a draft.
+
+**Fix options** (pick one):
+- **A (simpler)**: Change `releaseDraft: false` in `release.yml` so the release publishes automatically after all matrix jobs complete. Downside: no manual review window before publish.
+- **B**: Keep draft, but add a final workflow job (needs: [build]) that runs `gh release edit $TAG --draft=false` to auto-publish once all builds succeed.
+
+**Also check**: For the macOS universal build, `tauri-action` may generate two separate platform entries (`darwin-aarch64` / `darwin-x86_64`) pointing to the same universal binary. Add `updaterJsonKeepUniversal: true` to the macOS job's `with:` block so the JSON uses a single `darwin-universal` key instead — avoids signature mismatches when the updater plugin selects the wrong entry.
+
+#### BUG-2: "New file" toolbar button creates at workspace root, not selected directory
+
+**Root cause**: `ExplorerPanel.vue` `startRootCreate(root.path)` always passes `root.path` to `fsui.requestCreateIn()`. There is no concept of "currently selected directory" — the button always targets the root regardless of which folder the user is in.
+
+**Fix**: Use the active tab's file path to derive the default directory. In `startRootCreate(rootPath)`, check `tabs.activeTab?.path` — if it falls within this root, compute its parent directory and pass that to `fsui.requestCreateIn()`; otherwise fall back to `rootPath`. This requires importing `useTabsStore` in `ExplorerPanel.vue` (already imported). No new store state needed.
+
+```ts
+function startRootCreate(rootPath: string) {
+  const activeFilePath = tabs.activeTab?.path?.replace(/\\/g, '/');
+  const normalizedRoot = rootPath.replace(/\\/g, '/');
+  if (activeFilePath?.startsWith(normalizedRoot + '/')) {
+    const lastSlash = activeFilePath.lastIndexOf('/');
+    fsui.requestCreateIn(activeFilePath.slice(0, lastSlash));
+  } else {
+    fsui.requestCreateIn(rootPath);
+  }
+}
+```
+
+---
+
+### New features
+
+#### FEAT-1: Create folder
+
+Allow users to create a new directory from the Explorer (context menu on a dir + `+` button in `ws-root-header`).
+
+**Rust** (`lib.rs`):
+- Add `create_dir(path: String) -> Result<String, String>` using `fs::create_dir_all`. Reject if `path` already exists.
+- Register in `invoke_handler![]`. No new capability needed (covered by existing `fs:scope $HOME/**`).
+
+**Frontend**:
+- `fsui` store: add `pendingCreateDirInDir: ref<string | null>(null)` + `requestCreateDirIn(dir)` / cancel helper.
+- `workspace` store: add `createDir(parentDir, name) -> Promise<string>` — invokes `create_dir`, then `refreshNodeChildren` or `refreshRoot`.
+- `ExplorerPanel.vue`: add "New Folder" button to `ws-root-header` + context menu entry for dirs. Render `InlineFilenameInput` with `placeholder="folder-name"` for `pendingCreateDirInDir`.
+- After creation, open the new folder in the tree (call `toggleDir` on it).
+
+#### FEAT-2: Slash in filename auto-creates directories
+
+Typing `game/game-1.md` in the new-file input should create the `game/` directory (and any parents) then create `game-1.md` inside it.
+
+**Rust** (`lib.rs` — `create_md_file`):
+- Remove the `contains(['/', '\\'])` rejection.
+- Split `filename` on `/` and `\` to get path components. All but the last are directory segments; the last is the filename.
+- Build `target_dir = dir_p.join(segments[..n-1])` and call `fs::create_dir_all(&target_dir)`.
+- Append `.md` to the final segment if missing, then create the file.
+- Return the absolute path of the created file.
+
+**Frontend** (`workspace.ts` — `createMdFile`):
+- After `invoke("create_md_file", ...)`, call `refreshParentOf(newPath)` as now — but since intermediate dirs may be new, also call `refreshRoot(rootPath)` if the intermediate dir wasn't visible in the tree. The existing `refreshParentOf` walks up and refreshes the nearest known ancestor, so it already handles this correctly as long as the tree node exists or the root is refreshed.
+
+#### FEAT-3: Settings modal — full app metadata + native OS "Settings" menu item
+
+**Settings modal** (`SettingsModal.vue`) — expand the "About" section:
+- Author: `aniadev`
+- License: MIT
+- GitHub: `https://github.com/aniadev/mdview` (link — use `shell.open` via `@tauri-apps/plugin-opener`)
+- Hardcode these values since they don't change at runtime (they're already in `tauri.conf.json` but no Tauri v2 API exposes them at runtime).
+
+**Native OS menu entry** (Tauri v2 `tauri::menu` API in `lib.rs`):
+- In the `setup()` closure, build a `MenuItem` with id `"settings"` and add it to the app menu. On macOS, add it to the first menu (app name menu) with accelerator `CmdOrCtrl+,` (standard macOS "Preferences" shortcut).
+- Handle `MenuEvent` in the `run()` callback: emit a Tauri event `"open-settings"` to the webview.
+- Frontend: in `App.vue` `onMounted`, listen for `open-settings` event and call `ui.openSettings()`.
+- The in-app ⚙ toolbar button continues to work alongside this.
+
+Implementation note: Tauri v2 menu API requires `tauri::menu::{Menu, MenuItem, Submenu}` and the `app.set_menu(menu)` call. On Windows/Linux a top-level menubar appears; on macOS it integrates with the system menu bar.
+
+#### FEAT-4: Workspace management — create new, add folder, save as .code-workspace
+
+**New workspace actions** (`workspace.ts`):
+
+- `addFolderToCurrentWorkspace()` — opens a folder picker, appends the new root to `roots`, then calls `saveCurrentWorkspace()` if a `workspaceFile` exists, or prompts to save as new workspace file.
+- `saveCurrentWorkspace()` — serializes `roots` as `{ "folders": [{ "path": <relative-if-possible>, "name": <name> }] }` and writes via `invoke("write_text", { path: workspaceFile, contents: JSON.stringify(..., null, 2) })`. Paths are made relative to the workspace file's directory when they share a common ancestor; otherwise absolute.
+- `saveAsNewWorkspace()` — opens a save-file dialog (`.code-workspace` filter), writes the serialized JSON, then calls `openWorkspaceFile()` to reload (sets `workspaceFile` and persists the key).
+
+**Rust**: No new command needed — `write_text` is already available.
+
+**UI entry points** (`ExplorerPanel.vue` sidebar header):
+- When `workspace.hasWorkspace && !workspace.workspaceFile`: show "Save as Workspace…" button.
+- When `workspace.hasWorkspace`: show "Add Folder to Workspace" button (folder icon `+`).
+- These can live in `.sidebar-actions` next to the existing close button, or in an overflow menu to avoid crowding.
+
+**Dialog import**: `save` dialog from `@tauri-apps/plugin-dialog` (already a dependency).
+
+#### FEAT-5: Activity Bar moves under sidebar header; sidebar becomes resizable
+
+**Activity Bar relocation**:
+- Remove `<ActivityBar />` from `App.vue`'s `.app-shell` flex row.
+- Remove the `width: 48px` left column from layout.
+- Move the two activity buttons (Explorer / Terminal) into `ExplorerPanel.vue` directly below `.sidebar-header`, as a horizontal `.sidebar-activity-row` bar. Keep the same `ui.toggleSidebar()` / `ui.toggleBottomPanel()` calls. The Explorer button is now redundant (it's inside the sidebar it toggles) — replace it with a "Collapse Sidebar" chevron, or keep it as an active indicator.
+- Update `ActivityBar.vue` or inline the buttons directly in `ExplorerPanel.vue` and delete `ActivityBar.vue`.
+
+**Sidebar resize**:
+- `ui` store: add `sidebarWidth: ref(220)` (not persisted across sessions initially — add persistence later if needed).
+- `Sidebar.vue`: set `width: ui.sidebarWidth + 'px'` as inline style. Min/max clamp: 140–480 px.
+- Add a `<div class="sidebar-resize-handle">` at the right edge of `Sidebar.vue` (4 px wide, full height, `cursor: col-resize`).
+- `mousedown` on handle: attach `mousemove` + `mouseup` listeners to `window`. `mousemove` updates `ui.sidebarWidth` by delta. `mouseup` removes listeners.
+- `SplitPane.vue` already exists for the editor split — check if it can be reused, but the sidebar drag is simpler and doesn't need the same component.
+- `App.vue`: the `.work-top` flex row already has `Sidebar` + `main` with `flex: 1` on main, so changing sidebar width via inline style works without layout changes.
+- Don't use `v-show` tricks for the resize handle — use CSS `pointer-events: none` while sidebar is hidden.

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Icon } from "@iconify/vue";
 import { useUiStore } from "../stores/ui";
 import { useThemeStore } from "../stores/theme";
 
@@ -14,7 +15,7 @@ const theme = useThemeStore();
         :title="ui.sidebarVisible ? 'Hide Sidebar (Cmd/Ctrl+B)' : 'Show Sidebar (Cmd/Ctrl+B)'"
         @click="ui.toggleSidebar()"
       >
-        {{ ui.sidebarVisible ? "◧" : "▭" }}
+        <Icon :icon="ui.sidebarVisible ? 'lucide:panel-left-close' : 'lucide:panel-left'" width="16" height="16" />
       </button>
     </div>
     <div class="app-header-title">mdview</div>
@@ -24,10 +25,10 @@ const theme = useThemeStore();
         :title="theme.theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'"
         @click="theme.toggle()"
       >
-        {{ theme.theme === "dark" ? "☀" : "☾" }}
+        <Icon :icon="theme.theme === 'dark' ? 'lucide:sun' : 'lucide:moon'" width="16" height="16" />
       </button>
       <button class="icon-btn" title="Settings" @click="ui.openSettings()">
-        ⚙
+        <Icon icon="lucide:settings" width="16" height="16" />
       </button>
     </div>
   </header>

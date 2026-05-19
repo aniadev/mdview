@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from "vue";
+import { Icon } from "@iconify/vue";
 import MarkdownIt from "markdown-it";
 import markdownItAnchor from "markdown-it-anchor";
 import katexPlugin from "@vscode/markdown-it-katex";
@@ -263,7 +264,7 @@ const isEmpty = computed(() => !props.source || props.source.trim() === "");
         :title="themeStore.previewTheme === 'dark' ? 'Switch preview to light' : 'Switch preview to dark'"
         @click="themeStore.togglePreviewTheme()"
       >
-        {{ themeStore.previewTheme === "dark" ? "☀" : "☾" }}
+        <Icon :icon="themeStore.previewTheme === 'dark' ? 'lucide:sun' : 'lucide:moon'" width="16" height="16" />
       </button>
     </div>
     <div ref="root" class="preview-pane" :data-theme="themeStore.previewTheme">

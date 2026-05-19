@@ -2,8 +2,8 @@
 import { onMounted, onBeforeUnmount, ref, watch } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { Icon } from "@iconify/vue";
 import AppHeader from "./components/AppHeader.vue";
-import ActivityBar from "./components/ActivityBar.vue";
 import Sidebar from "./components/Sidebar.vue";
 import TabBar from "./components/TabBar.vue";
 import EditorArea from "./components/EditorArea.vue";
@@ -29,6 +29,7 @@ async function openExternalMd(path: string) {
 }
 
 let unlistenOpenFile: UnlistenFn | null = null;
+let unlistenOpenSettings: UnlistenFn | null = null;
 
 const workspace = useWorkspaceStore();
 const tabs = useTabsStore();
@@ -88,6 +89,10 @@ onMounted(async () => {
     void openExternalMd(e.payload);
   });
 
+  unlistenOpenSettings = await listen("open-settings", () => {
+    ui.openSettings();
+  });
+
   try {
     const pending = await invoke<string[]>("consume_pending_open_files");
     for (const p of pending) await openExternalMd(p);
@@ -103,6 +108,8 @@ onBeforeUnmount(() => {
   window.removeEventListener("keydown", onKeydown);
   unlistenOpenFile?.();
   unlistenOpenFile = null;
+  unlistenOpenSettings?.();
+  unlistenOpenSettings = null;
 });
 
 watch(
@@ -117,14 +124,13 @@ watch(
   <div class="app-root">
     <AppHeader />
     <div class="app-shell">
-      <ActivityBar />
       <div class="work-area">
         <div class="work-top">
           <Sidebar v-show="ui.sidebarVisible" />
           <main class="main-area">
             <div v-if="workspace.error" class="error-banner">
               <span>{{ workspace.error }}</span>
-              <button @click="workspace.error = null">×</button>
+              <button @click="workspace.error = null"><Icon icon="lucide:x" width="14" height="14" /></button>
             </div>
             <TabBar />
             <EditorArea v-if="tabs.activeTab" />

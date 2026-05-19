@@ -12,6 +12,7 @@ interface CtxMenuState {
 
 export const useFsUiStore = defineStore("fsui", () => {
   const pendingCreateInDir = ref<string | null>(null);
+  const pendingCreateDirInDir = ref<string | null>(null);
   const pendingRenamePath = ref<string | null>(null);
   const ctxMenu = ref<CtxMenuState>({
     visible: false,
@@ -42,26 +43,37 @@ export const useFsUiStore = defineStore("fsui", () => {
 
   function requestCreateIn(dir: string) {
     pendingCreateInDir.value = dir;
+    pendingCreateDirInDir.value = null;
+    pendingRenamePath.value = null;
+  }
+
+  function requestCreateDirIn(dir: string) {
+    pendingCreateDirInDir.value = dir;
+    pendingCreateInDir.value = null;
     pendingRenamePath.value = null;
   }
 
   function requestRename(path: string) {
     pendingRenamePath.value = path;
     pendingCreateInDir.value = null;
+    pendingCreateDirInDir.value = null;
   }
 
   function cancelInputs() {
     pendingCreateInDir.value = null;
+    pendingCreateDirInDir.value = null;
     pendingRenamePath.value = null;
   }
 
   return {
     pendingCreateInDir,
+    pendingCreateDirInDir,
     pendingRenamePath,
     ctxMenu,
     openContextMenu,
     closeContextMenu,
     requestCreateIn,
+    requestCreateDirIn,
     requestRename,
     cancelInputs,
   };

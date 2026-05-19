@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, watch } from "vue";
+import { Icon } from "@iconify/vue";
 import { EditorState } from "@codemirror/state";
 import { EditorView, keymap, lineNumbers, highlightActiveLine } from "@codemirror/view";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
@@ -212,26 +213,24 @@ function actImage() { wrapSelection("![", "](https://)", "alt"); }
 <template>
   <div class="source-editor-wrap">
     <div class="md-toolbar" role="toolbar">
-      <button class="tb-btn" title="Bold (Cmd/Ctrl+B)" @click="actBold"><strong>B</strong></button>
-      <button class="tb-btn" title="Italic (Cmd/Ctrl+I)" @click="actItalic"><em>I</em></button>
-      <button class="tb-btn" title="Heading (cycle H1-H3)" @click="actHeading">
-        <span class="tb-h">H</span>
-      </button>
-      <button class="tb-btn" title="Underline" @click="actUnderline"><span style="text-decoration: underline">U</span></button>
-      <button class="tb-btn" title="Strikethrough" @click="actStrike"><span style="text-decoration: line-through">S</span></button>
+      <button class="tb-btn" title="Bold (Cmd/Ctrl+B)" @click="actBold"><Icon icon="lucide:bold" width="14" height="14" /></button>
+      <button class="tb-btn" title="Italic (Cmd/Ctrl+I)" @click="actItalic"><Icon icon="lucide:italic" width="14" height="14" /></button>
+      <button class="tb-btn" title="Heading (cycle H1-H3)" @click="actHeading"><Icon icon="lucide:heading" width="14" height="14" /></button>
+      <button class="tb-btn" title="Underline" @click="actUnderline"><Icon icon="lucide:underline" width="14" height="14" /></button>
+      <button class="tb-btn" title="Strikethrough" @click="actStrike"><Icon icon="lucide:strikethrough" width="14" height="14" /></button>
       <span class="tb-sep"></span>
-      <button class="tb-btn" title="Ordered list" @click="actOl">1.</button>
-      <button class="tb-btn" title="Unordered list" @click="actUl">•</button>
-      <button class="tb-btn" title="Checklist" @click="actCheck">☐</button>
+      <button class="tb-btn" title="Ordered list" @click="actOl"><Icon icon="lucide:list-ordered" width="14" height="14" /></button>
+      <button class="tb-btn" title="Unordered list" @click="actUl"><Icon icon="lucide:list" width="14" height="14" /></button>
+      <button class="tb-btn" title="Checklist" @click="actCheck"><Icon icon="lucide:list-checks" width="14" height="14" /></button>
       <span class="tb-sep"></span>
-      <button class="tb-btn" title="Quote" @click="actQuote">❝</button>
-      <button class="tb-btn" title="Code block" @click="actCode">&lt;/&gt;</button>
-      <button class="tb-btn" title="Table" @click="actTable">⊞</button>
+      <button class="tb-btn" title="Quote" @click="actQuote"><Icon icon="lucide:quote" width="14" height="14" /></button>
+      <button class="tb-btn" title="Code block" @click="actCode"><Icon icon="lucide:code" width="14" height="14" /></button>
+      <button class="tb-btn" title="Table" @click="actTable"><Icon icon="lucide:table" width="14" height="14" /></button>
       <span class="tb-sep"></span>
-      <button class="tb-btn" title="Link" @click="actLink">↗</button>
-      <button class="tb-btn" title="Image" @click="actImage">🖼</button>
+      <button class="tb-btn" title="Link" @click="actLink"><Icon icon="lucide:link" width="14" height="14" /></button>
+      <button class="tb-btn" title="Image" @click="actImage"><Icon icon="lucide:image" width="14" height="14" /></button>
       <span class="tb-spacer"></span>
-      <button class="tb-btn" title="Open preview in browser" @click="emit('open-browser')">⧉</button>
+      <button class="tb-btn" title="Open preview in browser" @click="emit('open-browser')"><Icon icon="lucide:external-link" width="14" height="14" /></button>
     </div>
     <div ref="host" class="source-editor"></div>
   </div>
@@ -281,11 +280,6 @@ function actImage() { wrapSelection("![", "](https://)", "alt"); }
 
 .tb-btn:active {
   background: var(--bg-selected);
-}
-
-.tb-h {
-  font-weight: 700;
-  font-size: 14px;
 }
 
 .tb-sep {

@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from "vue";
+import { Icon } from "@iconify/vue";
 import { getVersion } from "@tauri-apps/api/app";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { useUiStore } from "../stores/ui";
 import { useUpdaterStore } from "../stores/updater";
 
@@ -8,6 +10,15 @@ const ui = useUiStore();
 const updater = useUpdaterStore();
 
 const appVersion = ref<string>("");
+const REPO_URL = "https://github.com/aniadev/mdview";
+
+async function openRepo() {
+  try {
+    await openUrl(REPO_URL);
+  } catch (e) {
+    console.error("openUrl failed", e);
+  }
+}
 
 onMounted(async () => {
   try {
@@ -51,7 +62,7 @@ function onClose() {
       <div class="settings-modal" @click.stop>
         <header class="settings-header">
           <h2 class="settings-title">Settings</h2>
-          <button class="icon-btn" title="Close" @click="onClose">×</button>
+          <button class="icon-btn" title="Close" @click="onClose"><Icon icon="lucide:x" width="16" height="16" /></button>
         </header>
 
         <div class="settings-body">
@@ -60,6 +71,20 @@ function onClose() {
             <div class="settings-row">
               <span class="settings-label">Version</span>
               <span class="settings-value">v{{ appVersion || "…" }}</span>
+            </div>
+            <div class="settings-row">
+              <span class="settings-label">Author</span>
+              <span class="settings-value">aniadev</span>
+            </div>
+            <div class="settings-row">
+              <span class="settings-label">License</span>
+              <span class="settings-value">MIT</span>
+            </div>
+            <div class="settings-row">
+              <span class="settings-label">GitHub</span>
+              <a class="settings-link" @click.prevent="openRepo" :href="REPO_URL">
+                aniadev/mdview
+              </a>
             </div>
           </section>
 
@@ -193,5 +218,16 @@ function onClose() {
 
 .settings-help.error {
   color: var(--danger);
+}
+
+.settings-link {
+  color: var(--accent);
+  font-size: 12px;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.settings-link:hover {
+  text-decoration: underline;
 }
 </style>

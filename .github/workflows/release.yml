@@ -93,6 +93,7 @@ jobs:
           releaseName: "mdview ${{ steps.tag.outputs.value }}"
           releaseBody: |
             See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for the full release notes.
-          releaseDraft: true
+          releaseDraft: false
           prerelease: false
+          updaterJsonKeepUniversal: ${{ matrix.target == 'universal-apple-darwin' }}
           args: ${{ matrix.args }}

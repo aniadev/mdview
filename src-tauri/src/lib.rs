@@ -5,6 +5,7 @@ use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Mutex;
+use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
 use tauri::{AppHandle, Emitter, Manager, RunEvent, State};
 use walkdir::WalkDir;
 
@@ -178,22 +179,49 @@ fn create_md_file(dir: String, filename: String) -> Result<String, String> {
     if !dir_p.is_dir() {
         return Err(format!("not a directory: {}", dir));
     }
-    let mut name = filename.trim().to_string();
-    if name.is_empty() {
+    let raw = filename.trim();
+    if raw.is_empty() {
         return Err("empty filename".into());
     }
-    if name.contains(['/', '\\']) {
-        return Err("filename cannot contain path separators".into());
+    let segments: Vec<&str> = raw
+        .split(['/', '\\'])
+        .filter(|s| !s.is_empty())
+        .collect();
+    if segments.is_empty() {
+        return Err("empty filename".into());
     }
+    for seg in &segments {
+        if *seg == "." || *seg == ".." {
+            return Err("path segments '.' and '..' not allowed".into());
+        }
+    }
+    let mut target_dir = dir_p.clone();
+    if segments.len() > 1 {
+        for seg in &segments[..segments.len() - 1] {
+            target_dir.push(seg);
+        }
+        std::fs::create_dir_all(&target_dir).map_err(|e| e.to_string())?;
+    }
+    let mut name = segments[segments.len() - 1].to_string();
     if !name.to_lowercase().ends_with(".md") {
         name.push_str(".md");
     }
-    let target = dir_p.join(&name);
+    let target = target_dir.join(&name);
     if target.exists() {
         return Err(format!("file already exists: {}", name));
     }
     std::fs::write(&target, "").map_err(|e| e.to_string())?;
     Ok(target.to_string_lossy().to_string())
+}
+
+#[tauri::command]
+fn create_dir(path: String) -> Result<String, String> {
+    let p = PathBuf::from(&path);
+    if p.exists() {
+        return Err(format!("already exists: {}", path));
+    }
+    std::fs::create_dir_all(&p).map_err(|e| e.to_string())?;
+    Ok(p.to_string_lossy().to_string())
 }
 
 #[tauri::command]
@@ -562,6 +590,69 @@ fn focus_main_window(app: &AppHandle) {
     }
 }
 
+// ─── Native menu (v1.3) ────────────────────────────────────────────────────
+
+fn build_app_menu(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
+    let settings_item = MenuItem::with_id(
+        app,
+        "settings",
+        "Settings…",
+        true,
+        Some("CmdOrCtrl+,"),
+    )?;
+
+    #[cfg(target_os = "macos")]
+    let menu = {
+        let app_submenu = Submenu::with_items(
+            app,
+            "mdview",
+            true,
+            &[
+                &PredefinedMenuItem::about(app, None, None)?,
+                &PredefinedMenuItem::separator(app)?,
+                &settings_item,
+                &PredefinedMenuItem::separator(app)?,
+                &PredefinedMenuItem::services(app, None)?,
+                &PredefinedMenuItem::separator(app)?,
+                &PredefinedMenuItem::hide(app, None)?,
+                &PredefinedMenuItem::hide_others(app, None)?,
+                &PredefinedMenuItem::show_all(app, None)?,
+                &PredefinedMenuItem::separator(app)?,
+                &PredefinedMenuItem::quit(app, None)?,
+            ],
+        )?;
+        let edit_submenu = Submenu::with_items(
+            app,
+            "Edit",
+            true,
+            &[
+                &PredefinedMenuItem::undo(app, None)?,
+                &PredefinedMenuItem::redo(app, None)?,
+                &PredefinedMenuItem::separator(app)?,
+                &PredefinedMenuItem::cut(app, None)?,
+                &PredefinedMenuItem::copy(app, None)?,
+                &PredefinedMenuItem::paste(app, None)?,
+                &PredefinedMenuItem::select_all(app, None)?,
+            ],
+        )?;
+        Menu::with_items(app, &[&app_submenu, &edit_submenu])?
+    };
+
+    #[cfg(not(target_os = "macos"))]
+    let menu = {
+        let file_submenu = Submenu::with_items(
+            app,
+            "File",
+            true,
+            &[&settings_item, &PredefinedMenuItem::quit(app, None)?],
+        )?;
+        Menu::with_items(app, &[&file_submenu])?
+    };
+
+    app.set_menu(menu)?;
+    Ok(())
+}
+
 // ─── App entry ─────────────────────────────────────────────────────────────
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -593,7 +684,13 @@ pub fn run() {
                     }
                 }
             }
+            build_app_menu(app.handle())?;
             Ok(())
+        })
+        .on_menu_event(|app, event| {
+            if event.id().as_ref() == "settings" {
+                let _ = app.emit("open-settings", ());
+            }
         })
         .invoke_handler(tauri::generate_handler![
             list_dir,
@@ -603,6 +700,7 @@ pub fn run() {
             list_md_files,
             write_temp_html,
             create_md_file,
+            create_dir,
             rename_path,
             delete_file,
             parse_code_workspace,

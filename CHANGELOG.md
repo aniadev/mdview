@@ -2,6 +2,33 @@
 
 All notable changes to mdview.
 
+## [1.3.0] — 2026-05-19
+
+### Added
+
+- **Create folder** — right-click any directory in the File Tree for "New Folder", or click the folder-plus button in the workspace root header. Uses `create_dir` Rust backend (FR from v1.3 roadmap).
+- **Slash in filename auto-creates directories** — typing `game/game-1.md` in the new-file input creates intermediate directories (`game/`) then places the file inside. `.` and `..` path segments are rejected (FR from v1.3 roadmap).
+- **Settings modal** — full app metadata (Author, License, GitHub link). The native macOS app menu now includes a "Settings…" item with `Cmd+,` accelerator, emitting an `open-settings` Tauri event that opens the settings modal regardless of how the button is triggered (FR from v1.3 roadmap).
+- **Workspace management** — save current multi-root workspace as a `.code-workspace` file, save-as to a new file, or add folders to the current workspace. Paths are relativized when they share a common ancestor with the workspace file (FR from v1.3 roadmap).
+- **Remove Folder from Workspace** — right-click any workspace root header in the Explorer and select "Remove Folder from Workspace". Tabs belonging to the removed root close automatically (with confirmation for dirty files). Single-root fallback persists via legacy `workspace_path` key.
+- **Find in editor (`Cmd/Ctrl+F`)** — CodeMirror 6 search panel via `@codemirror/search`. Supports regex, case-sensitive toggle, and match highlighting. Opened by `Cmd/Ctrl+F` when the editor is focused.
+- **Two-way scroll sync** — scrolling the Preview pane now syncs the editor to the same position, not just editor→preview. A `previewExpectedScrollPct` guard prevents infinite scroll loops between the two panes.
+
+### Changed
+
+- **Activity Bar relocated** — activity buttons (Terminal, Collapse Sidebar) moved from the standalone `ActivityBar.vue` component into `ExplorerPanel.vue` `.sidebar-activity-row`, positioned directly below the sidebar header. `ActivityBar.vue` deleted.
+- **Sidebar now resizable** — drag the right edge of the sidebar (140–480 px range, `cursor: col-resize`). Width stored in `ui.sidebarWidth` (session-scoped, not persisted).
+- **Sidebar toggle moved to app-header-right** — the panel-left toggle button now lives next to theme and settings in the header's right side.
+- **Icons migrated to Lucide via `@iconify/vue`** — full icon set registered offline (`addCollection(lucideData)` in `main.ts`). Use `<Icon icon="lucide:<name>" width="N" height="N" />` in all components. No CDN fetches.
+- **Native macOS menu** — app menu with About, Settings… (`Cmd+,`), standard Edit menu (Undo/Redo/Cut/Copy/Paste/Select All), and Quit. On Windows/Linux a File menu with Settings and Quit is shown. Menu event handler emits `open-settings` to the webview.
+- **`create_md_file` now accepts path separators** in the filename — splits on `/` and `\`, creates intermediate directories, and places the `.md` file at the final segment.
+
+### Fixed
+
+- **Updater "could not fetch a valid release JSON"** — release workflow now sets `releaseDraft: false` (auto-publish after build) and `updaterJsonKeepUniversal: true` for macOS universal builds (avoids duplicate `darwin-aarch64`/`darwin-x86_64` entries in `latest.json`).
+- **"New file" toolbar button** now targets the active tab's parent directory instead of always creating at the workspace root.
+- **macOS `RunEvent::Opened` handler** extracted to `handle_run_event` (`#[cfg(target_os = "macos")]`) — avoids unused-variable warnings on Windows/Linux.
+
 ## [1.2.0] — 2026-05-18
 
 ### Added

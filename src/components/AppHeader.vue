@@ -9,15 +9,7 @@ const theme = useThemeStore();
 
 <template>
   <header class="app-header">
-    <div class="app-header-left">
-      <button
-        class="icon-btn"
-        :title="ui.sidebarVisible ? 'Hide Sidebar (Cmd/Ctrl+B)' : 'Show Sidebar (Cmd/Ctrl+B)'"
-        @click="ui.toggleSidebar()"
-      >
-        <Icon :icon="ui.sidebarVisible ? 'lucide:panel-left-close' : 'lucide:panel-left'" width="16" height="16" />
-      </button>
-    </div>
+    <div class="app-header-left"></div>
     <div class="app-header-title">mdview</div>
     <div class="app-header-right">
       <button
@@ -29,6 +21,13 @@ const theme = useThemeStore();
       </button>
       <button class="icon-btn" title="Settings" @click="ui.openSettings()">
         <Icon icon="lucide:settings" width="16" height="16" />
+      </button>
+      <button
+        class="icon-btn"
+        :title="ui.sidebarVisible ? 'Hide Sidebar (Cmd/Ctrl+B)' : 'Show Sidebar (Cmd/Ctrl+B)'"
+        @click="ui.toggleSidebar()"
+      >
+        <Icon :icon="ui.sidebarVisible ? 'lucide:panel-left-close' : 'lucide:panel-left'" width="16" height="16" />
       </button>
     </div>
   </header>

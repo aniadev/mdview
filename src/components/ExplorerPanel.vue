@@ -17,8 +17,16 @@ const ui = useUiStore();
 const rootInputRef = ref<InstanceType<typeof InlineFilenameInput> | null>(null);
 const rootDirInputRef = ref<InstanceType<typeof InlineFilenameInput> | null>(null);
 
+const rootCtxMenu = ref<{ visible: boolean; x: number; y: number; rootPath: string }>({
+  visible: false,
+  x: 0,
+  y: 0,
+  rootPath: "",
+});
+
 function onWindowClick() {
   if (fsui.ctxMenu.visible) fsui.closeContextMenu();
+  if (rootCtxMenu.value.visible) rootCtxMenu.value.visible = false;
 }
 
 onMounted(() => window.addEventListener("click", onWindowClick));
@@ -92,6 +100,17 @@ async function onRootCreateDirCommit(rootPath: string, name: string) {
   } catch (e) {
     rootDirInputRef.value?.setError(String(e));
   }
+}
+
+function onRootCtxMenu(e: MouseEvent, rootPath: string) {
+  if (workspace.roots.length <= 1) return;
+  rootCtxMenu.value = { visible: true, x: e.clientX, y: e.clientY, rootPath };
+}
+
+function removeRootFromWs() {
+  const path = rootCtxMenu.value.rootPath;
+  rootCtxMenu.value = { visible: false, x: 0, y: 0, rootPath: "" };
+  workspace.removeRoot(path);
 }
 
 function startRootCreate(rootPath: string) {
@@ -197,7 +216,10 @@ function startRootCreateDir(rootPath: string) {
             :key="root.path"
             class="ws-root"
           >
-            <div class="ws-root-header">
+            <div
+              class="ws-root-header"
+              @contextmenu.prevent="onRootCtxMenu($event, root.path)"
+            >
               <span class="ws-root-name" :title="root.path">{{ root.name }}</span>
               <span class="ws-root-actions">
                 <button
@@ -293,6 +315,19 @@ function startRootCreateDir(rootPath: string) {
           @click="ctxDelete"
         >
           Delete
+        </button>
+      </div>
+    </Teleport>
+
+    <Teleport to="body">
+      <div
+        v-if="rootCtxMenu.visible"
+        class="ctx-menu"
+        :style="{ left: rootCtxMenu.x + 'px', top: rootCtxMenu.y + 'px' }"
+        @click.stop
+      >
+        <button class="ctx-item" @click="removeRootFromWs">
+          Remove Folder from Workspace
         </button>
       </div>
     </Teleport>

@@ -9,6 +9,7 @@ import type {
   TreeNode,
   WorkspaceRoot,
 } from "../types";
+import { useTabsStore } from "./tabs";
 
 const STORE_FILE = "mdview-settings.json";
 const KEY_WORKSPACE_PATH = "workspace_path"; // legacy single-folder
@@ -407,6 +408,40 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     }
   }
 
+  async function removeRoot(rootPathVal: string) {
+    const tabs = useTabsStore();
+    const rootPathNorm = rootPathVal.replace(/\\/g, "/");
+    const tabsToClose = tabs.tabs.filter((t) => {
+      const tabPathNorm = t.path.replace(/\\/g, "/");
+      return tabPathNorm.startsWith(rootPathNorm + "/") || tabPathNorm === rootPathNorm;
+    });
+    for (const tab of tabsToClose) {
+      await tabs.closeTab(tab.path);
+    }
+    roots.value = roots.value.filter((r) => r.path !== rootPathVal);
+    const s = await getStore();
+    if (roots.value.length === 0) {
+      workspaceFile.value = null;
+      error.value = null;
+      await s.delete(KEY_WORKSPACE_PATH);
+      await s.delete(KEY_WORKSPACE_FILE);
+      await s.save();
+    } else if (roots.value.length === 1) {
+      workspaceFile.value = null;
+      await s.set(KEY_WORKSPACE_PATH, roots.value[0].path);
+      await s.delete(KEY_WORKSPACE_FILE);
+      await s.save();
+    } else {
+      if (workspaceFile.value) {
+        try {
+          await saveCurrentWorkspace();
+        } catch (e) {
+          error.value = String(e);
+        }
+      }
+    }
+  }
+
   return {
     roots,
     workspaceFile,
@@ -422,6 +457,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     openFolder,
     openWorkspaceFile,
     removeWorkspace,
+    removeRoot,
     restoreWorkspace,
     toggleDir,
     refreshRoot,

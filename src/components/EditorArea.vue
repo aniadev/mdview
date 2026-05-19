@@ -10,6 +10,7 @@ import PreviewPane from "./PreviewPane.vue";
 const tabs = useTabsStore();
 const ratio = ref(0.5);
 const scrollPercent = ref(0);
+const previewScrollPercent = ref(0);
 const previewRef = ref<InstanceType<typeof PreviewPane> | null>(null);
 
 const tab = computed(() => tabs.activeTab);
@@ -21,6 +22,10 @@ function onUpdate(value: string) {
 
 function onScroll(pct: number) {
   scrollPercent.value = pct;
+}
+
+function onPreviewScroll(pct: number) {
+  previewScrollPercent.value = pct;
 }
 
 async function onSave() {
@@ -59,6 +64,7 @@ async function onOpenBrowser() {
         <SourceEditor
           :model-value="tab.content"
           :tab-key="tab.path"
+          :scroll-percent="previewScrollPercent"
           @update:model-value="onUpdate"
           @scroll="onScroll"
           @save="onSave"
@@ -71,6 +77,7 @@ async function onOpenBrowser() {
           :source="tab.content"
           :file-path="tab.path"
           :scroll-percent="scrollPercent"
+          @scroll="onPreviewScroll"
         />
       </template>
     </SplitPane>

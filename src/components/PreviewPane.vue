@@ -17,6 +17,10 @@ const props = defineProps<{
   scrollPercent: number;
 }>();
 
+const emit = defineEmits<{
+  (e: "scroll", pct: number): void;
+}>();
+
 const themeStore = useThemeStore();
 
 const md = new MarkdownIt({
@@ -159,6 +163,7 @@ const root = ref<HTMLDivElement | null>(null);
 const lastPct = ref(0);
 let resizeObs: ResizeObserver | null = null;
 let bodyEl: HTMLElement | null = null;
+let previewExpectedScrollPct = -1;
 
 function applyScroll() {
   if (!root.value) return;
@@ -166,6 +171,7 @@ function applyScroll() {
   if (max <= 0) return;
   const target = Math.round(lastPct.value * max);
   if (Math.abs(root.value.scrollTop - target) > 2) {
+    previewExpectedScrollPct = lastPct.value;
     root.value.scrollTop = target;
   }
 }
@@ -248,6 +254,19 @@ body { margin:0; background:var(--bg); color:var(--text); font: 16px/1.6 -apple-
 .markdown-body .katex-display { margin: 1em 0; overflow-x: auto; overflow-y: hidden; }
 `;
 
+function onUserScroll() {
+  if (!root.value) return;
+  const el = root.value;
+  const max = el.scrollHeight - el.clientHeight;
+  const actualPct = max > 0 ? el.scrollTop / max : 0;
+  if (previewExpectedScrollPct >= 0 && Math.abs(actualPct - previewExpectedScrollPct) < 0.02) {
+    previewExpectedScrollPct = -1;
+    return;
+  }
+  previewExpectedScrollPct = -1;
+  emit("scroll", actualPct);
+}
+
 defineExpose({
   buildStandaloneHtml,
 });
@@ -267,7 +286,7 @@ const isEmpty = computed(() => !props.source || props.source.trim() === "");
         <Icon :icon="themeStore.previewTheme === 'dark' ? 'lucide:sun' : 'lucide:moon'" width="16" height="16" />
       </button>
     </div>
-    <div ref="root" class="preview-pane" :data-theme="themeStore.previewTheme">
+    <div ref="root" class="preview-pane" :data-theme="themeStore.previewTheme" @scroll="onUserScroll">
       <div v-if="isEmpty" class="preview-empty">Preview will appear here.</div>
       <div v-else class="markdown-body" v-html="html"></div>
     </div>

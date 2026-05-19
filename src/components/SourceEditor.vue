@@ -4,6 +4,7 @@ import { Icon } from "@iconify/vue";
 import { EditorState } from "@codemirror/state";
 import { EditorView, keymap, lineNumbers, highlightActiveLine } from "@codemirror/view";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
+import { searchKeymap, highlightSelectionMatches } from "@codemirror/search";
 import { markdown } from "@codemirror/lang-markdown";
 import { oneDark } from "@codemirror/theme-one-dark";
 import { syntaxHighlighting, defaultHighlightStyle, bracketMatching } from "@codemirror/language";
@@ -14,6 +15,7 @@ const themeStore = useThemeStore();
 const props = defineProps<{
   modelValue: string;
   tabKey: string;
+  scrollPercent?: number;
 }>();
 
 const emit = defineEmits<{
@@ -26,6 +28,7 @@ const emit = defineEmits<{
 const host = ref<HTMLDivElement | null>(null);
 let view: EditorView | null = null;
 let suppressEmit = false;
+let editorExpectedScrollPct = -1;
 
 function build(initial: string): EditorView {
   const baseExt = [
@@ -35,6 +38,8 @@ function build(initial: string): EditorView {
     bracketMatching(),
     syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
     markdown(),
+    keymap.of([...searchKeymap]),
+    highlightSelectionMatches(),
   ];
   const themeExt = themeStore.theme === "dark" ? [oneDark] : [];
   const state = EditorState.create({
@@ -66,8 +71,13 @@ function build(initial: string): EditorView {
         scroll: (_e, v) => {
           const el = v.scrollDOM;
           const max = el.scrollHeight - el.clientHeight;
-          const pct = max > 0 ? el.scrollTop / max : 0;
-          emit("scroll", pct);
+          const actualPct = max > 0 ? el.scrollTop / max : 0;
+          if (editorExpectedScrollPct >= 0 && Math.abs(actualPct - editorExpectedScrollPct) < 0.02) {
+            editorExpectedScrollPct = -1;
+            return;
+          }
+          editorExpectedScrollPct = -1;
+          emit("scroll", actualPct);
         },
       }),
     ],
@@ -113,6 +123,21 @@ watch(
       changes: { from: 0, to: view.state.doc.length, insert: next },
     });
     suppressEmit = false;
+  }
+);
+
+watch(
+  () => props.scrollPercent,
+  (pct) => {
+    if (pct === undefined || !view) return;
+    const dom = view.scrollDOM;
+    const max = dom.scrollHeight - dom.clientHeight;
+    if (max <= 0) return;
+    const target = Math.round(pct * max);
+    if (Math.abs(dom.scrollTop - target) > 2) {
+      editorExpectedScrollPct = pct;
+      dom.scrollTop = target;
+    }
   }
 );
 

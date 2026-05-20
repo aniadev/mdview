@@ -181,32 +181,33 @@ jobs:
           set -euo pipefail
           VERSION="${TAG#v}"
           PUB_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          BASE_URL="https://github.com/${{ github.repository }}/releases/download/${TAG}"
 
           NOTES=$(gh release view "$TAG" --repo "${{ github.repository }}" --json body -q '.body // ""')
-          ASSETS=$(gh release view "$TAG" --repo "${{ github.repository }}" --json assets -q '[.assets[].browser_download_url]')
+          ASSET_NAMES=$(gh release view "$TAG" --repo "${{ github.repository }}" --json assets -q '[.assets[].name]')
 
-          get_asset() { echo "$ASSETS" | jq -r --arg p "$1" '.[] | select(test($p)) | .' | head -1; }
+          echo "Available assets:"
+          echo "$ASSET_NAMES" | jq -r '.[]'
 
-          MAC_SIG_URL=$(get_asset '_universal\\.app\\.tar\\.gz\\.sig$')
-          WIN_SIG_URL=$(get_asset 'x64-setup\\.nsis\\.zip\\.sig$')
+          get_name() { echo "$ASSET_NAMES" | jq -r --arg p "$1" '.[] | select(test($p))' | head -1; }
 
           PLATFORMS="{}"
 
-          if [ -n "$MAC_SIG_URL" ]; then
-            MAC_URL="${MAC_SIG_URL%.sig}"
-            MAC_SIG=$(curl -fsL "$MAC_SIG_URL")
+          MAC_NAME=$(get_name 'universal\.app\.tar\.gz\.sig$')
+          if [ -n "$MAC_NAME" ]; then
+            MAC_SIG=$(curl -fsL "${BASE_URL}/${MAC_NAME}")
             PLATFORMS=$(jq -n \
-              --arg u "$MAC_URL" --arg s "$MAC_SIG" --argjson p "$PLATFORMS" \
+              --arg u "${BASE_URL}/${MAC_NAME%.sig}" --arg s "$MAC_SIG" --argjson p "$PLATFORMS" \
               '$p + {"darwin-universal":{"signature":$s,"url":$u}}')
           else
             echo "WARNING: macOS .sig not found — skipping darwin-universal"
           fi
 
-          if [ -n "$WIN_SIG_URL" ]; then
-            WIN_URL="${WIN_SIG_URL%.sig}"
-            WIN_SIG=$(curl -fsL "$WIN_SIG_URL")
+          WIN_NAME=$(get_name 'nsis\.zip\.sig$')
+          if [ -n "$WIN_NAME" ]; then
+            WIN_SIG=$(curl -fsL "${BASE_URL}/${WIN_NAME}")
             PLATFORMS=$(jq -n \
-              --arg u "$WIN_URL" --arg s "$WIN_SIG" --argjson p "$PLATFORMS" \
+              --arg u "${BASE_URL}/${WIN_NAME%.sig}" --arg s "$WIN_SIG" --argjson p "$PLATFORMS" \
               '$p + {"windows-x86_64":{"signature":$s,"url":$u}}')
           else
             echo "WARNING: Windows .sig not found — skipping windows-x86_64"

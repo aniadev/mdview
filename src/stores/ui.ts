@@ -1,5 +1,6 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
+import { load } from "@tauri-apps/plugin-store";
 import type { TocHeading } from "../components/TocPanel.vue";
 
 export type SidebarView = "explorer" | "outline";
@@ -14,6 +15,25 @@ export const useUiStore = defineStore("ui", () => {
   const currentHeadings = ref<TocHeading[]>([]);
   const activeHeadingIndex = ref(-1);
   const navigateHeadingTrigger = ref(0);
+
+  // Toast state
+  const toastMessage = ref<string | null>(null);
+  let toastTimer: ReturnType<typeof setTimeout> | null = null;
+
+  function showToast(msg: string, ms = 2200) {
+    if (toastTimer !== null) clearTimeout(toastTimer);
+    toastMessage.value = msg;
+    toastTimer = setTimeout(() => {
+      toastMessage.value = null;
+      toastTimer = null;
+    }, ms);
+  }
+
+  // Tour state
+  const tourActive = ref(false);
+  const tourStep = ref(0);
+  const tourSeen = ref(false);
+  const TOUR_STEPS_COUNT = 9;
 
   function toggleSidebar() {
     sidebarVisible.value = !sidebarVisible.value;
@@ -56,7 +76,54 @@ export const useUiStore = defineStore("ui", () => {
     navigateHeadingTrigger.value++;
   }
 
+  // Tour actions
+  function startTour() {
+    tourStep.value = 0;
+    tourActive.value = true;
+  }
+
+  function nextStep() {
+    if (tourStep.value < TOUR_STEPS_COUNT - 1) {
+      tourStep.value++;
+    } else {
+      skipTour();
+    }
+  }
+
+  function prevStep() {
+    if (tourStep.value > 0) tourStep.value--;
+  }
+
+  async function skipTour() {
+    tourActive.value = false;
+    tourSeen.value = true;
+    try {
+      const store = await load("mdview-settings.json", { autoSave: true, defaults: {} });
+      await store.set("tour_seen", true);
+      await store.save();
+    } catch (e) {
+      console.error("skipTour persist failed", e);
+    }
+  }
+
+  async function initTour() {
+    if (tourSeen.value) return;
+    try {
+      const store = await load("mdview-settings.json", { autoSave: true, defaults: {} });
+      const seen = await store.get<boolean>("tour_seen");
+      if (seen === true) {
+        tourSeen.value = true;
+        return;
+      }
+    } catch {
+      // If store unavailable, still show tour
+    }
+    startTour();
+  }
+
   return {
+    toastMessage,
+    showToast,
     sidebarVisible,
     sidebarWidth,
     bottomPanelVisible,
@@ -66,6 +133,9 @@ export const useUiStore = defineStore("ui", () => {
     currentHeadings,
     activeHeadingIndex,
     navigateHeadingTrigger,
+    tourActive,
+    tourStep,
+    tourSeen,
     toggleSidebar,
     toggleBottomPanel,
     setBottomPanelHeight,
@@ -76,5 +146,10 @@ export const useUiStore = defineStore("ui", () => {
     setCurrentHeadings,
     setActiveHeadingIndex,
     triggerNavigateHeading,
+    startTour,
+    nextStep,
+    prevStep,
+    skipTour,
+    initTour,
   };
 });

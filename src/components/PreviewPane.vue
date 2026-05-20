@@ -5,14 +5,19 @@ import MarkdownIt from "markdown-it";
 import markdownItAnchor from "markdown-it-anchor";
 import katexPlugin from "@vscode/markdown-it-katex";
 import hljs from "highlight.js";
-import { convertFileSrc } from "@tauri-apps/api/core";
+import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import hljsDarkCss from "highlight.js/styles/github-dark.css?inline";
 import hljsLightCss from "highlight.js/styles/github.css?inline";
 import "katex/dist/katex.min.css";
 import { headingPxToProgress, headingProgressToPx } from "../utils/scrollSync";
 import { useThemeStore } from "../stores/theme";
 import { useUiStore } from "../stores/ui";
+import { useI18n } from "../i18n";
 import type { TocHeading } from "./TocPanel.vue";
+import { openPath } from "@tauri-apps/plugin-opener";
+
+const { t } = useI18n();
+
 
 interface HeadingInfo extends TocHeading {
   offsetTop: number;
@@ -261,24 +266,42 @@ onMounted(() => {
   }
 });
 
-function buildStandaloneHtml(title: string): string {
+function buildStandaloneHtml(title: string, forPrint = false): string {
   const bodyHtml = bodyEl ? bodyEl.innerHTML : html.value;
-  const hljsCss = themeStore.previewTheme === "dark" ? hljsDarkCss : hljsLightCss;
+  const effectiveTheme = forPrint ? "light" : themeStore.previewTheme;
+  const hljsCss = effectiveTheme === "dark" ? hljsDarkCss : hljsLightCss;
   const escapedTitle = title
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
+  
+  const printScript = forPrint
+    ? `<script>window.addEventListener('load', function() { setTimeout(function() { window.print(); }, 500); });<\/script>`
+    : "";
+  const printCss = forPrint
+    ? `<style media="print">
+@page { margin: 2cm; size: A4; }
+body { font-size: 11pt; line-height: 1.6; color: #000; background: #fff; }
+.markdown-body { max-width: 100%; padding: 0; }
+pre, code { background: #f5f5f5 !important; border: 1px solid #ddd; page-break-inside: avoid; }
+h1, h2, h3, h4, h5, h6 { page-break-after: avoid; }
+img { max-width: 100%; page-break-inside: avoid; }
+table { page-break-inside: avoid; }
+.mermaid svg { background: #fff !important; }
+</style>`
+    : "";
+
   return `<!doctype html>
-<html data-theme="${themeStore.previewTheme}">
+<html data-theme="${effectiveTheme}">
 <head>
 <meta charset="utf-8">
 <title>${escapedTitle}</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
 <style>${hljsCss}</style>
-<style>${BASE_EXPORT_CSS}</style>
+<style>${BASE_EXPORT_CSS}</style>${printCss}
 </head>
 <body>
-<main class="markdown-body">${bodyHtml}</main>
+<main class="markdown-body">${bodyHtml}</main>${printScript}
 </body>
 </html>`;
 }
@@ -335,12 +358,19 @@ function onUserScroll() {
   });
 }
 
-function printPdf() {
-  window.print();
+async function exportForPrint(title: string) {
+  const html = buildStandaloneHtml(title, true);
+  try {
+    const path = await invoke<string>("write_temp_html", { html, baseName: title });
+    await openPath(path);
+  } catch (e) {
+    console.error("exportForPrint failed", e);
+  }
 }
 
 defineExpose({
   buildStandaloneHtml,
+  exportForPrint,
 });
 
 const isEmpty = computed(() => !props.source || props.source.trim() === "");
@@ -349,26 +379,26 @@ const isEmpty = computed(() => !props.source || props.source.trim() === "");
 <template>
   <div class="preview-wrap">
     <div class="preview-toolbar">
-      <span class="tb-spacer"></span>
-      <button class="icon-btn" title="Print / Export PDF" @click="printPdf">
+      <button class="icon-btn" :title="t('preview.print')" @click="exportForPrint(props.filePath.replace(/\\/g, '/').split('/').pop() ?? 'preview')">
         <Icon icon="lucide:printer" width="16" height="16" />
       </button>
-      <button
-        class="icon-btn"
-        :title="themeStore.previewTheme === 'dark' ? 'Switch preview to light' : 'Switch preview to dark'"
-        @click="themeStore.togglePreviewTheme()"
-      >
+      <button class="icon-btn" :title="themeStore.previewTheme === 'dark' ? t('preview.light') : t('preview.dark')" @click="themeStore.togglePreviewTheme()">
         <Icon :icon="themeStore.previewTheme === 'dark' ? 'lucide:sun' : 'lucide:moon'" width="16" height="16" />
       </button>
     </div>
-    <div ref="root" class="preview-pane" :data-theme="themeStore.previewTheme" @scroll="onUserScroll">
-      <div v-if="isEmpty" class="preview-empty">Preview will appear here.</div>
+    <div ref="root" class="preview-pane" :data-theme="themeStore.previewTheme" @scroll.passive="onUserScroll">
+      <div v-if="isEmpty" class="preview-empty">{{ t('preview.empty') }}</div>
       <div v-else class="markdown-body" v-html="html"></div>
     </div>
   </div>
 </template>
 
 <style>
+.preview-toolbar .icon-btn {
+  width: 26px !important;
+  height: 26px !important;
+}
+
 .preview-wrap {
   display: flex;
   flex-direction: column;

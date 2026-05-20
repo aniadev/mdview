@@ -7,6 +7,9 @@ import { useTabsStore } from "../stores/tabs";
 import { useFsUiStore } from "../stores/fsui";
 import { isAgentFile } from "../utils/agentFiles";
 import InlineFilenameInput from "./InlineFilenameInput.vue";
+import { useI18n } from "../i18n";
+
+const { t } = useI18n();
 
 const props = defineProps<{
   node: TreeNode;
@@ -24,6 +27,8 @@ const dim = computed(() => !props.node.has_md);
 const selected = computed(
   () => !props.node.is_dir && tabs.activePath === props.node.path
 );
+const multiSelected = computed(() => fsui.isMultiSelected(props.node.path));
+
 
 const inputRef = ref<InstanceType<typeof InlineFilenameInput> | null>(null);
 
@@ -43,7 +48,13 @@ const showCreateDirChild = computed(
 
 const showRename = computed(() => fsui.pendingRenamePath === props.node.path);
 
-async function onRowClick() {
+async function onRowClick(e: MouseEvent) {
+  if (e.metaKey || e.ctrlKey) {
+    fsui.toggleSelection(props.node.path, props.node.is_dir);
+    return;
+  }
+  // Normal click: clear multi-selection, select this node
+  fsui.selectOne(props.node.path, props.node.is_dir);
   if (props.node.is_dir) {
     await workspace.toggleDir(props.node);
   } else if (isMdFile.value) {
@@ -105,7 +116,7 @@ async function onRenameCommit(filename: string) {
     <template v-if="!showRename">
       <div
         class="tree-row"
-        :class="{ dim, selected }"
+        :class="{ dim, selected, 'multi-selected': multiSelected }"
         :style="{ paddingLeft: indent }"
         @click="onRowClick"
         @contextmenu="onContextMenu"
@@ -127,7 +138,7 @@ async function onRenameCommit(filename: string) {
         ref="inputRef"
         :initial="node.name"
         :depth="depth"
-        placeholder="new name"
+        :placeholder="t('input.rename')"
         @commit="onRenameCommit"
         @cancel="fsui.cancelInputs()"
       />
@@ -141,7 +152,7 @@ async function onRenameCommit(filename: string) {
         <InlineFilenameInput
           ref="inputRef"
           :depth="depth + 1"
-          placeholder="filename.md"
+          :placeholder="t('input.filename')"
           @commit="onCreateCommit"
           @cancel="fsui.cancelInputs()"
         />
@@ -150,7 +161,7 @@ async function onRenameCommit(filename: string) {
         <InlineFilenameInput
           ref="inputRef"
           :depth="depth + 1"
-          placeholder="folder-name"
+          :placeholder="t('input.foldername')"
           @commit="onCreateDirCommit"
           @cancel="fsui.cancelInputs()"
         />

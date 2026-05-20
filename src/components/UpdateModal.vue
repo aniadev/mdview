@@ -2,6 +2,9 @@
 import { computed } from "vue";
 import MarkdownIt from "markdown-it";
 import { useUpdaterStore } from "../stores/updater";
+import { useI18n } from "../i18n";
+
+const { t } = useI18n();
 
 const updater = useUpdaterStore();
 
@@ -36,10 +39,10 @@ function formatBytes(n: number): string {
       <div class="update-modal" @click.stop>
         <header class="update-modal-header">
           <div class="update-modal-title">
-            mdview <strong>v{{ newVersion }}</strong> available
+            {{ t('update.title', { name: 'mdview', version: `v${newVersion}` }) }}
           </div>
           <div class="update-modal-subtitle">
-            current: v{{ currentVersion }}
+            {{ t('update.current', { version: `v${currentVersion}` }) }}
           </div>
         </header>
 
@@ -47,13 +50,9 @@ function formatBytes(n: number): string {
           <template v-if="updater.state === 'downloading' || updater.state === 'ready'">
             <div class="update-progress-wrap">
               <div class="update-progress-label">
-                <span v-if="updater.state === 'ready'">Download complete</span>
+                <span v-if="updater.state === 'ready'">{{ t('update.complete') }}</span>
                 <span v-else>
-                  Downloading… {{ updater.progressPct }}%
-                  <template v-if="updater.totalBytes > 0">
-                    ({{ formatBytes(updater.downloadedBytes) }} /
-                    {{ formatBytes(updater.totalBytes) }})
-                  </template>
+                  {{ t('update.downloading', { percent: updater.progressPct, downloaded: formatBytes(updater.downloadedBytes), total: formatBytes(updater.totalBytes) }) }}
                 </span>
               </div>
               <div class="update-progress-bar">
@@ -66,31 +65,31 @@ function formatBytes(n: number): string {
           </template>
           <template v-else-if="updater.state === 'error'">
             <div class="update-error">
-              <strong>Update failed</strong>
+              <strong>{{ t('update.failed') }}</strong>
               <div class="update-error-msg">{{ updater.errorMsg }}</div>
             </div>
           </template>
           <template v-else>
-            <h3 class="update-notes-heading">Release notes</h3>
+            <h3 class="update-notes-heading">{{ t('update.releaseNotes') }}</h3>
             <div class="update-notes markdown-body" v-html="releaseHtml"></div>
           </template>
         </div>
 
         <footer class="update-modal-footer">
           <template v-if="updater.state === 'downloading'">
-            <button class="primary" disabled>Downloading…</button>
+            <button class="primary" disabled>{{ t('settings.downloading').replace(' {percent}%', '') }}…</button>
           </template>
           <template v-else-if="updater.state === 'ready'">
-            <button class="primary" disabled>Installing…</button>
+            <button class="primary" disabled>{{ t('settings.ready').split('—')[1]?.trim() ?? 'Installing...' }}</button>
           </template>
           <template v-else-if="updater.state === 'error'">
-            <button @click="updater.closeModal()">Close</button>
-            <button class="primary" @click="updater.retry()">Try again</button>
+            <button @click="updater.closeModal()">{{ t('update.close') }}</button>
+            <button class="primary" @click="updater.retry()">{{ t('update.tryAgain') }}</button>
           </template>
           <template v-else>
-            <button @click="updater.closeModal()">Later</button>
+            <button @click="updater.closeModal()">{{ t('update.later') }}</button>
             <button class="primary" @click="updater.startInstall()">
-              {{ (updater.update as any)?.isManual ? 'Go to Download Page' : 'Install & Restart' }}
+              {{ (updater.update as any)?.isManual ? t('update.goDownload') : t('update.install') }}
             </button>
           </template>
         </footer>

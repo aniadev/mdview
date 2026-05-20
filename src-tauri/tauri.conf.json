@@ -23,7 +23,9 @@
       "csp": null,
       "assetProtocol": {
         "enable": true,
-        "scope": ["**"]
+        "scope": [
+          "**"
+        ]
       }
     }
   },
@@ -46,7 +48,10 @@
     ],
     "fileAssociations": [
       {
-        "ext": ["md", "markdown"],
+        "ext": [
+          "md",
+          "markdown"
+        ],
         "name": "Markdown Document",
         "description": "Markdown text document",
         "role": "Editor"
@@ -66,17 +71,15 @@
       },
       "nsis": {
         "installMode": "perMachine",
-        "languages": ["English", "Vietnamese"],
+        "languages": [
+          "English",
+          "Vietnamese"
+        ],
         "displayLanguageSelector": true,
         "installerIcon": "icons/icon.ico"
       },
       "webviewInstallMode": {
         "type": "embedBootstrapper"
-      },
-      "msix": {
-        "publisher": "CN=aniadev",
-        "packageName": "dev.mdview.app",
-        "packageDisplayName": "mdview"
       }
     }
   },

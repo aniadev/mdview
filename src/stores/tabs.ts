@@ -2,6 +2,7 @@ import { defineStore } from "pinia";
 import { ref, computed } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 import { confirm } from "@tauri-apps/plugin-dialog";
+import { useI18n } from "../i18n";
 
 export interface Tab {
   path: string;
@@ -83,13 +84,14 @@ export const useTabsStore = defineStore("tabs", () => {
   }
 
   async function closeTab(path: string): Promise<void> {
+    const { t } = useI18n();
     const idx = tabs.value.findIndex((t) => t.path === path);
     if (idx === -1) return;
     const tab = tabs.value[idx];
     if (isDirty(tab)) {
       const ok = await confirm(
-        `"${tab.name}" has unsaved changes. Close without saving?`,
-        { title: "Unsaved changes", kind: "warning" }
+        t('confirm.unsavedMsg', { name: tab.name }),
+        { title: t('confirm.unsavedTitle'), kind: "warning" }
       );
       if (!ok) return;
     }
@@ -132,11 +134,12 @@ export const useTabsStore = defineStore("tabs", () => {
   }
 
   async function closeAllTabs(): Promise<void> {
+    const { t } = useI18n();
     const dirty = tabs.value.filter(isDirty);
     if (dirty.length > 0) {
       const ok = await confirm(
-        `${dirty.length} file${dirty.length > 1 ? "s have" : " has"} unsaved changes. Close all without saving?`,
-        { title: "Close all tabs", kind: "warning" }
+        t('confirm.closeAllMsg', { n: dirty.length }),
+        { title: t('confirm.closeAllTitle'), kind: "warning" }
       );
       if (!ok) return;
     }

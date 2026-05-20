@@ -2,6 +2,9 @@
 import { ref, watch, nextTick } from "vue";
 import { usePaletteStore } from "../stores/palette";
 import { useTabsStore } from "../stores/tabs";
+import { useI18n } from "../i18n";
+
+const { t } = useI18n();
 
 const palette = usePaletteStore();
 const tabs = useTabsStore();
@@ -60,7 +63,7 @@ function onBackdropClick() {
         :value="palette.query"
         @input="onInput"
         @keydown="onKeydown"
-        placeholder="Search files by name…"
+        :placeholder="t('palette.placeholder')"
         spellcheck="false"
       />
       <ul class="palette-results" v-if="palette.results.length > 0">
@@ -76,7 +79,7 @@ function onBackdropClick() {
           <span class="palette-path">{{ r.rel_path }}</span>
         </li>
       </ul>
-      <div v-else class="palette-empty">No matches.</div>
+      <div v-else class="palette-empty">{{ t('palette.noMatches') }}</div>
     </div>
   </div>
 </template>

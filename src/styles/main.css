@@ -1,4 +1,4 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 @theme {
   --color-app: var(--bg-app);
@@ -19,7 +19,7 @@
 }
 
 :root,
-[data-theme="dark"] {
+[data-theme='dark'] {
   --bg-app: #1e1e1e;
   --bg-sidebar: #252526;
   --bg-tab-bar: #2d2d2d;
@@ -35,13 +35,12 @@
   --accent: #0078d4;
   --danger: #f48771;
   --link: #4daafc;
-  --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
-    Arial, sans-serif;
-  --font-mono: "SF Mono", Menlo, Monaco, Consolas, "Courier New", monospace;
+  --font-ui: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: 'SF Mono', Menlo, Monaco, Consolas, 'Courier New', monospace;
   --sidebar-width: 260px;
 }
 
-[data-theme="light"] {
+[data-theme='light'] {
   --bg-app: #ffffff;
   --bg-sidebar: #f3f3f3;
   --bg-tab-bar: #ececec;
@@ -122,7 +121,7 @@ button.primary:hover {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 12px;
+  padding: 4px 12px 5px;
   border-bottom: 1px solid var(--border);
   font-size: 11px;
   text-transform: uppercase;
@@ -219,6 +218,12 @@ button.primary:hover {
   background: var(--bg-selected);
 }
 
+.tree-row.multi-selected {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  outline: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  outline-offset: -1px;
+}
+
 .tree-row.dim {
   opacity: 0.4;
 }
@@ -229,6 +234,8 @@ button.primary:hover {
   color: var(--text-muted);
   font-size: 10px;
   flex: 0 0 16px;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .tree-icon {
@@ -236,11 +243,15 @@ button.primary:hover {
   text-align: center;
   flex: 0 0 16px;
   color: var(--text-muted);
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .tree-name {
   overflow: hidden;
   text-overflow: ellipsis;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .tree-children {
@@ -299,18 +310,23 @@ button.primary:hover {
   .chevron-btn {
     display: none !important;
   }
+
   .app-shell {
     display: block !important;
   }
+
   .preview-pane {
     overflow: visible !important;
   }
+
   .source-editor-wrap {
     display: none !important;
   }
+
   .split-pane-handle {
     display: none !important;
   }
+
   body {
     background: #fff;
     color: #000;

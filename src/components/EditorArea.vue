@@ -7,6 +7,9 @@ import { useUiStore } from "../stores/ui";
 import SplitPane from "./SplitPane.vue";
 import SourceEditor from "./SourceEditor.vue";
 import PreviewPane from "./PreviewPane.vue";
+import { useI18n } from "../i18n";
+
+const { t } = useI18n();
 
 const tabs = useTabsStore();
 const ui = useUiStore();
@@ -83,7 +86,7 @@ async function onOpenBrowser() {
 
 <template>
   <div class="editor-area" v-if="tab">
-    <div v-if="tab.loading" class="empty-editor">Loading {{ tab.name }}…</div>
+    <div v-if="tab.loading" class="empty-editor">{{ t('preview.loading', { name: tab.name }) }}</div>
     <div v-else-if="tab.loadError" class="empty-editor" style="color: var(--danger)">
       {{ tab.loadError }}
     </div>

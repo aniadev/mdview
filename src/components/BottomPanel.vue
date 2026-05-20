@@ -3,6 +3,9 @@ import { ref, onBeforeUnmount } from "vue";
 import { Icon } from "@iconify/vue";
 import { useUiStore } from "../stores/ui";
 import TerminalPanel from "./TerminalPanel.vue";
+import { useI18n } from "../i18n";
+
+const { t } = useI18n();
 
 const ui = useUiStore();
 
@@ -51,7 +54,7 @@ onBeforeUnmount(() => {
       <span class="bottom-panel-title">TERMINAL</span>
       <button
         class="icon-btn"
-        title="Close panel"
+        :title="t('tab.closePanel')"
         @click="ui.toggleBottomPanel()"
       >
         <Icon icon="lucide:x" width="14" height="14" />

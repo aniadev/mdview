@@ -254,7 +254,71 @@ fn delete_file(path: String) -> Result<(), String> {
     Ok(())
 }
 
+// ─── Copy path (v1.5.0) ────────────────────────────────────────────────────
+
+fn resolve_name_conflict(path: &Path) -> PathBuf {
+    if !path.exists() {
+        return path.to_path_buf();
+    }
+    let stem = path
+        .file_stem()
+        .map(|s| s.to_string_lossy().to_string())
+        .unwrap_or_default();
+    let ext = path
+        .extension()
+        .map(|e| format!(".{}", e.to_string_lossy()))
+        .unwrap_or_default();
+    let parent = path.parent().unwrap_or(Path::new("."));
+    // Try stem-copy, then stem-copy-2, stem-copy-3, …
+    let candidate = parent.join(format!("{}-copy{}", stem, ext));
+    if !candidate.exists() {
+        return candidate;
+    }
+    let mut counter = 2u32;
+    loop {
+        let candidate = parent.join(format!("{}-copy-{}{}", stem, counter, ext));
+        if !candidate.exists() {
+            return candidate;
+        }
+        counter += 1;
+    }
+}
+
+fn copy_dir_recursive(src: &Path, dest: &Path) -> std::io::Result<()> {
+    std::fs::create_dir_all(dest)?;
+    for entry in std::fs::read_dir(src)? {
+        let entry = entry?;
+        let ft = entry.file_type()?;
+        let dest_child = dest.join(entry.file_name());
+        if ft.is_dir() {
+            copy_dir_recursive(&entry.path(), &dest_child)?;
+        } else {
+            std::fs::copy(entry.path(), &dest_child)?;
+        }
+    }
+    Ok(())
+}
+
+#[tauri::command]
+fn copy_path(source: String, dest_dir: String) -> Result<String, String> {
+    let src = Path::new(&source);
+    let name = src
+        .file_name()
+        .ok_or("invalid source path")?
+        .to_str()
+        .ok_or("non-UTF8 file name")?;
+    let raw_dest = PathBuf::from(&dest_dir).join(name);
+    let dest = resolve_name_conflict(&raw_dest);
+    if src.is_dir() {
+        copy_dir_recursive(src, &dest).map_err(|e| e.to_string())?;
+    } else {
+        std::fs::copy(src, &dest).map_err(|e| e.to_string())?;
+    }
+    Ok(dest.to_string_lossy().to_string())
+}
+
 // ─── .code-workspace parsing (v1.1) ────────────────────────────────────────
+
 
 #[derive(Serialize)]
 pub struct WorkspaceFolder {
@@ -709,7 +773,9 @@ pub fn run() {
             pty_resize,
             pty_kill,
             consume_pending_open_files,
+            copy_path,
         ])
+
         .build(tauri::generate_context!())
         .expect("error while building tauri application");
 

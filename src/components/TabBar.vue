@@ -1,13 +1,15 @@
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, nextTick } from "vue";
-import { Icon } from "@iconify/vue";
-import { useTabsStore } from "../stores/tabs";
-import { useThemeStore } from "../stores/theme";
-import { useUiStore } from "../stores/ui";
+import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue';
+import { Icon } from '@iconify/vue';
+import { useTabsStore } from '../stores/tabs';
+import { useThemeStore } from '../stores/theme';
+import { useUiStore } from '../stores/ui';
+import { useI18n } from '../i18n';
 
 const tabs = useTabsStore();
 const theme = useThemeStore();
 const ui = useUiStore();
+const { t } = useI18n();
 
 const tabListRef = ref<HTMLDivElement | null>(null);
 const showLeftChevron = ref(false);
@@ -18,7 +20,7 @@ function onCloseClick(e: MouseEvent, path: string) {
   void tabs.closeTab(path);
 }
 
-const ctxMenu = ref({ visible: false, x: 0, y: 0, targetPath: "" });
+const ctxMenu = ref({ visible: false, x: 0, y: 0, targetPath: '' });
 
 function onTabContextMenu(e: MouseEvent, path: string) {
   e.preventDefault();
@@ -50,14 +52,14 @@ let dragSourceIndex = -1;
 function onDragStart(e: DragEvent, index: number) {
   dragSourceIndex = index;
   if (e.dataTransfer) {
-    e.dataTransfer.effectAllowed = "move";
-    e.dataTransfer.setData("text/plain", String(index));
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', String(index));
   }
 }
 
 function onDragOver(e: DragEvent) {
   e.preventDefault();
-  if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
+  if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
 }
 
 function onDrop(e: DragEvent, index: number) {
@@ -82,16 +84,16 @@ function checkOverflow() {
 function scrollTabs(delta: number) {
   const el = tabListRef.value;
   if (!el) return;
-  el.scrollBy({ left: delta, behavior: "smooth" });
+  el.scrollBy({ left: delta, behavior: 'smooth' });
   void nextTick().then(checkOverflow);
 }
 
 onMounted(() => {
-  window.addEventListener("click", onWindowClick);
+  window.addEventListener('click', onWindowClick);
   checkOverflow();
 });
 onBeforeUnmount(() => {
-  window.removeEventListener("click", onWindowClick);
+  window.removeEventListener('click', onWindowClick);
 });
 </script>
 
@@ -126,7 +128,7 @@ onBeforeUnmount(() => {
           class="tab-close"
           :class="{ 'has-dirty': tabs.isDirty(tab) }"
           @click="onCloseClick($event, tab.path)"
-          title="Close (Cmd/Ctrl+W)"
+          :title="t('tab.closeTooltip')"
         >
           <Icon icon="lucide:x" width="12" height="12" />
         </button>
@@ -141,14 +143,22 @@ onBeforeUnmount(() => {
       <Icon icon="lucide:chevron-right" width="14" height="14" />
     </button>
     <div class="tab-bar-actions">
+      <button class="icon-btn" :title="t('sidebar.collapse')" @click="ui.toggleSidebar()">
+        <Icon v-if="ui.sidebarVisible" icon="lucide:panel-left" width="16" height="16" />
+        <Icon v-else icon="lucide:panel-left-open" width="16" height="16" />
+      </button>
       <button
         class="icon-btn"
-        :title="theme.theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'"
+        :title="theme.theme === 'dark' ? t('theme.light') : t('theme.dark')"
         @click="theme.toggle()"
       >
-        <Icon :icon="theme.theme === 'dark' ? 'lucide:sun' : 'lucide:moon'" width="16" height="16" />
+        <Icon
+          :icon="theme.theme === 'dark' ? 'lucide:sun' : 'lucide:moon'"
+          width="16"
+          height="16"
+        />
       </button>
-      <button class="icon-btn" title="Settings" @click="ui.openSettings()">
+      <button class="icon-btn" :title="t('settings.title')" @click="ui.openSettings()">
         <Icon icon="lucide:settings" width="16" height="16" />
       </button>
     </div>
@@ -160,8 +170,8 @@ onBeforeUnmount(() => {
       :style="{ left: ctxMenu.x + 'px', top: ctxMenu.y + 'px' }"
       @click.stop
     >
-      <button class="ctx-item" @click="ctxClose">Close</button>
-      <button class="ctx-item" @click="ctxCloseAll">Close All Tabs</button>
+      <button class="ctx-item" @click="ctxClose">{{ t('tab.close') }}</button>
+      <button class="ctx-item" @click="ctxCloseAll">{{ t('tab.closeAll') }}</button>
     </div>
   </Teleport>
 </template>
@@ -216,7 +226,7 @@ onBeforeUnmount(() => {
 }
 
 .tab.active::before {
-  content: "";
+  content: '';
   position: absolute;
   top: 0;
   left: 0;

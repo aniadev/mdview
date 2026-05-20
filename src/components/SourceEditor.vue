@@ -11,9 +11,11 @@ import { syntaxHighlighting, defaultHighlightStyle, bracketMatching } from "@cod
 import { headingPxToProgress, headingProgressToPx } from "../utils/scrollSync";
 import { useThemeStore } from "../stores/theme";
 import { useUiStore } from "../stores/ui";
+import { useI18n } from "../i18n";
 
 const themeStore = useThemeStore();
 const uiStore = useUiStore();
+const { t } = useI18n();
 
 const props = defineProps<{
   modelValue: string;
@@ -315,25 +317,25 @@ function toggleWrap() {
 <template>
   <div class="source-editor-wrap">
     <div class="md-toolbar" role="toolbar">
-      <button class="tb-btn" title="Bold (Cmd/Ctrl+B)" @click="actBold"><Icon icon="lucide:bold" width="14" height="14" /></button>
-      <button class="tb-btn" title="Italic (Cmd/Ctrl+I)" @click="actItalic"><Icon icon="lucide:italic" width="14" height="14" /></button>
-      <button class="tb-btn" title="Heading (cycle H1-H3)" @click="actHeading"><Icon icon="lucide:heading" width="14" height="14" /></button>
-      <button class="tb-btn" title="Underline" @click="actUnderline"><Icon icon="lucide:underline" width="14" height="14" /></button>
-      <button class="tb-btn" title="Strikethrough" @click="actStrike"><Icon icon="lucide:strikethrough" width="14" height="14" /></button>
+      <button class="tb-btn" :title="t('toolbar.bold')" @click="actBold"><Icon icon="lucide:bold" width="14" height="14" /></button>
+      <button class="tb-btn" :title="t('toolbar.italic')" @click="actItalic"><Icon icon="lucide:italic" width="14" height="14" /></button>
+      <button class="tb-btn" :title="t('toolbar.heading')" @click="actHeading"><Icon icon="lucide:heading" width="14" height="14" /></button>
+      <button class="tb-btn" :title="t('toolbar.underline')" @click="actUnderline"><Icon icon="lucide:underline" width="14" height="14" /></button>
+      <button class="tb-btn" :title="t('toolbar.strikethrough')" @click="actStrike"><Icon icon="lucide:strikethrough" width="14" height="14" /></button>
       <span class="tb-sep"></span>
-      <button class="tb-btn" title="Ordered list" @click="actOl"><Icon icon="lucide:list-ordered" width="14" height="14" /></button>
-      <button class="tb-btn" title="Unordered list" @click="actUl"><Icon icon="lucide:list" width="14" height="14" /></button>
-      <button class="tb-btn" title="Checklist" @click="actCheck"><Icon icon="lucide:list-checks" width="14" height="14" /></button>
+      <button class="tb-btn" :title="t('toolbar.orderedList')" @click="actOl"><Icon icon="lucide:list-ordered" width="14" height="14" /></button>
+      <button class="tb-btn" :title="t('toolbar.unorderedList')" @click="actUl"><Icon icon="lucide:list" width="14" height="14" /></button>
+      <button class="tb-btn" :title="t('toolbar.checklist')" @click="actCheck"><Icon icon="lucide:list-checks" width="14" height="14" /></button>
       <span class="tb-sep"></span>
-      <button class="tb-btn" title="Quote" @click="actQuote"><Icon icon="lucide:quote" width="14" height="14" /></button>
-      <button class="tb-btn" title="Code block" @click="actCode"><Icon icon="lucide:code" width="14" height="14" /></button>
-      <button class="tb-btn" title="Table" @click="actTable"><Icon icon="lucide:table" width="14" height="14" /></button>
+      <button class="tb-btn" :title="t('toolbar.quote')" @click="actQuote"><Icon icon="lucide:quote" width="14" height="14" /></button>
+      <button class="tb-btn" :title="t('toolbar.codeBlock')" @click="actCode"><Icon icon="lucide:code" width="14" height="14" /></button>
+      <button class="tb-btn" :title="t('toolbar.table')" @click="actTable"><Icon icon="lucide:table" width="14" height="14" /></button>
       <span class="tb-sep"></span>
-      <button class="tb-btn" title="Link" @click="actLink"><Icon icon="lucide:link" width="14" height="14" /></button>
-      <button class="tb-btn" title="Image" @click="actImage"><Icon icon="lucide:image" width="14" height="14" /></button>
+      <button class="tb-btn" :title="t('toolbar.link')" @click="actLink"><Icon icon="lucide:link" width="14" height="14" /></button>
+      <button class="tb-btn" :title="t('toolbar.image')" @click="actImage"><Icon icon="lucide:image" width="14" height="14" /></button>
       <span class="tb-spacer"></span>
-      <button class="tb-btn" :class="{ active: wordWrap }" title="Toggle Word Wrap" @click="toggleWrap"><Icon icon="lucide:wrap-text" width="14" height="14" /></button>
-      <button class="tb-btn" title="Open preview in browser" @click="emit('open-browser')"><Icon icon="lucide:external-link" width="14" height="14" /></button>
+      <button class="tb-btn" :class="{ active: wordWrap }" :title="t('toolbar.wordWrap')" @click="toggleWrap"><Icon icon="lucide:wrap-text" width="14" height="14" /></button>
+      <button class="tb-btn" :title="t('toolbar.openBrowser')" @click="emit('open-browser')"><Icon icon="lucide:external-link" width="14" height="14" /></button>
     </div>
     <div ref="host" class="source-editor"></div>
   </div>

@@ -5,9 +5,17 @@ import { getVersion } from "@tauri-apps/api/app";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { useUiStore } from "../stores/ui";
 import { useUpdaterStore } from "../stores/updater";
+import { useI18n } from "../i18n";
 
 const ui = useUiStore();
 const updater = useUpdaterStore();
+const { t, currentLocale, persistLocale } = useI18n();
+
+const selectedLocale = ref(currentLocale.value);
+
+async function changeLocale() {
+  await persistLocale(selectedLocale.value as 'en' | 'vi');
+}
 
 const appVersion = ref<string>("");
 const REPO_URL = "https://github.com/aniadev/mdview";
@@ -61,27 +69,27 @@ function onClose() {
     <div v-if="ui.settingsOpen" class="settings-overlay" @click="onClose">
       <div class="settings-modal" @click.stop>
         <header class="settings-header">
-          <h2 class="settings-title">Settings</h2>
-          <button class="icon-btn" title="Close" @click="onClose"><Icon icon="lucide:x" width="16" height="16" /></button>
+          <h2 class="settings-title">{{ t('settings.title') }}</h2>
+          <button class="icon-btn" :title="t('settings.close')" @click="onClose"><Icon icon="lucide:x" width="16" height="16" /></button>
         </header>
 
         <div class="settings-body">
           <section class="settings-section">
-            <h3 class="settings-section-title">About</h3>
+            <h3 class="settings-section-title">{{ t('settings.about') }}</h3>
             <div class="settings-row">
-              <span class="settings-label">Version</span>
-              <span class="settings-value">v{{ appVersion || "…" }}</span>
+              <span class="settings-label">{{ t('settings.version') }}</span>
+              <span class="settings-value">v{{ appVersion || '…' }}</span>
             </div>
             <div class="settings-row">
-              <span class="settings-label">Author</span>
+              <span class="settings-label">{{ t('settings.author') }}</span>
               <span class="settings-value">aniadev</span>
             </div>
             <div class="settings-row">
-              <span class="settings-label">License</span>
+              <span class="settings-label">{{ t('settings.license') }}</span>
               <span class="settings-value">MIT</span>
             </div>
             <div class="settings-row">
-              <span class="settings-label">GitHub</span>
+              <span class="settings-label">{{ t('settings.github') }}</span>
               <a class="settings-link" @click.prevent="openRepo" :href="REPO_URL">
                 aniadev/mdview
               </a>
@@ -89,10 +97,21 @@ function onClose() {
           </section>
 
           <section class="settings-section">
-            <h3 class="settings-section-title">Updates</h3>
+            <h3 class="settings-section-title">{{ t('settings.language') }}</h3>
+            <div class="settings-row">
+              <span class="settings-label">{{ t('settings.language') }}</span>
+              <select v-model="selectedLocale" class="settings-select" @change="changeLocale">
+                <option value="en">{{ t('settings.langEn') }}</option>
+                <option value="vi">{{ t('settings.langVi') }}</option>
+              </select>
+            </div>
+          </section>
+
+          <section class="settings-section">
+            <h3 class="settings-section-title">{{ t('settings.updates') }}</h3>
             <div class="settings-row">
               <div class="settings-row-main">
-                <div class="settings-label">Check for Updates</div>
+                <div class="settings-label">{{ t('settings.checkUpdate') }}</div>
                 <div
                   v-if="updateStatusText"
                   class="settings-help"
@@ -101,7 +120,7 @@ function onClose() {
                   {{ updateStatusText }}
                 </div>
                 <div v-else class="settings-help">
-                  mdview checks automatically on startup.
+                  {{ t('settings.autoCheck') }}
                 </div>
               </div>
               <button
@@ -110,7 +129,7 @@ function onClose() {
                 @click="onCheck"
               >
                 <span v-if="updater.state === 'checking'" class="spinner"></span>
-                <span v-else>Check now</span>
+                <span v-else>{{ t('settings.checkNow') }}</span>
               </button>
             </div>
           </section>
@@ -229,5 +248,20 @@ function onClose() {
 
 .settings-link:hover {
   text-decoration: underline;
+}
+
+.settings-select {
+  background: var(--bg-app);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-size: 12px;
+  padding: 4px 8px;
+  cursor: pointer;
+  outline: none;
+}
+
+.settings-select:focus {
+  border-color: var(--accent);
 }
 </style>

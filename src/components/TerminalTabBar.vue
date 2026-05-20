@@ -2,6 +2,9 @@
 import { ref } from "vue";
 import { Icon } from "@iconify/vue";
 import { useTerminalStore } from "../stores/terminal";
+import { useI18n } from "../i18n";
+
+const { t } = useI18n();
 
 const termStore = useTerminalStore();
 
@@ -83,13 +86,13 @@ function onRenameKey(e: KeyboardEvent) {
           <span class="term-tab-label">{{ termStore.displayLabel(s) }}</span>
           <button
             class="term-tab-close"
-            title="Close"
+            :title="t('tab.close')"
             @click="onClose($event, s.uid)"
           ><Icon icon="lucide:x" width="12" height="12" /></button>
         </template>
       </div>
     </div>
-    <button class="term-tab-add" title="New Terminal" @click="onCreate"><Icon icon="lucide:plus" width="16" height="16" /></button>
+    <button class="term-tab-add" :title="t('tab.newTerminal')" @click="onCreate"><Icon icon="lucide:plus" width="16" height="16" /></button>
   </div>
 </template>
 

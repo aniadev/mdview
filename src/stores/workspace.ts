@@ -312,15 +312,24 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     return idx >= 0 ? norm.slice(0, idx) : "";
   }
 
-  async function refreshParentOf(filePath: string) {
-    const parent = dirContainingPath(filePath);
-    const rootMatch = roots.value.find((r) => r.path === parent);
+  async function refreshDir(dirPath: string) {
+    const norm = dirPath.replace(/\\/g, "/");
+    const rootMatch = roots.value.find((r) => r.path === norm);
     if (rootMatch) {
-      await refreshRoot(rootMatch.path);
+      await refreshRootPreservingState(norm);
       return;
     }
-    const node = findNodeByPath(parent);
+    const node = findNodeByPath(norm);
     if (node) await refreshNodeChildren(node);
+  }
+
+  async function refreshParentOf(filePath: string) {
+    await refreshDir(dirContainingPath(filePath));
+  }
+
+  async function refreshUniqueParentsOf(filePaths: string[]) {
+    const parents = new Set(filePaths.map(dirContainingPath));
+    for (const p of parents) await refreshDir(p);
   }
 
   async function createMdFile(
@@ -374,6 +383,72 @@ export const useWorkspaceStore = defineStore("workspace", () => {
   async function deleteMdFile(path: string): Promise<void> {
     await invoke("delete_file", { path });
     await refreshParentOf(path);
+  }
+
+  async function deleteMdFilesBatch(paths: string[]): Promise<void> {
+    for (const p of paths) {
+      try {
+        await invoke("delete_file", { path: p });
+        useTabsStore().handleFileDeleted(p);
+      } catch (e) {
+        error.value = String(e);
+      }
+    }
+    await refreshUniqueParentsOf(paths);
+  }
+
+  async function copyFile(source: string, destDir: string): Promise<string> {
+    const newPath = await invoke<string>("copy_path", { source, destDir });
+    await refreshParentOf(newPath);
+    return newPath;
+  }
+
+  async function copyFilesBatch(sources: string[], destDir: string): Promise<void> {
+    const newPaths: string[] = [];
+    const movedSources: string[] = [];
+    for (const source of sources) {
+      try {
+        const newPath = await invoke<string>("copy_path", { source, destDir });
+        newPaths.push(newPath);
+      } catch (e) {
+        error.value = String(e);
+      }
+    }
+    if (newPaths.length > 0) await refreshDir(destDir);
+    if (movedSources.length > 0) await refreshUniqueParentsOf(movedSources);
+  }
+
+  async function moveFilesBatch(sources: string[], destDir: string): Promise<void> {
+    const movedSources: string[] = [];
+    const newPaths: string[] = [];
+    for (const source of sources) {
+      try {
+        const newPath = await invoke<string>("copy_path", { source, destDir });
+        await invoke("delete_file", { path: source });
+        const tabsStore = useTabsStore();
+        const newName = newPath.replace(/\\/g, "/").split("/").pop() ?? newPath;
+        tabsStore.handleFileRenamed(source, newPath, newName);
+        movedSources.push(source);
+        newPaths.push(newPath);
+      } catch (e) {
+        error.value = String(e);
+      }
+    }
+    const allPaths = [...movedSources, ...newPaths];
+    if (allPaths.length > 0) await refreshUniqueParentsOf(allPaths);
+  }
+
+  async function moveFile(source: string, destDir: string): Promise<string> {
+    const newPath = await invoke<string>("copy_path", { source, destDir });
+    // Delete the original after successful copy
+    await invoke("delete_file", { path: source });
+    // Refresh both source parent and destination parent
+    await refreshUniqueParentsOf([source, newPath]);
+    // Update any open tab pointing to the old path
+    const tabsStore = useTabsStore();
+    const newName = newPath.replace(/\\/g, "/").split("/").pop() ?? newPath;
+    tabsStore.handleFileRenamed(source, newPath, newName);
+    return newPath;
   }
 
   function dirname(p: string): string {
@@ -513,10 +588,17 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     refreshRoot,
     refreshRootPreservingState,
     refreshParentOf,
+    refreshDir,
+    refreshUniqueParentsOf,
     createMdFile,
     createDir,
     renameMdFile,
     deleteMdFile,
+    deleteMdFilesBatch,
+    copyFile,
+    copyFilesBatch,
+    moveFile,
+    moveFilesBatch,
     addFolderToCurrentWorkspace,
     saveCurrentWorkspace,
     saveAsNewWorkspace,

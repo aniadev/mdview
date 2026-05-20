@@ -10,12 +10,14 @@ import CommandPalette from "./components/CommandPalette.vue";
 import BottomPanel from "./components/BottomPanel.vue";
 import UpdateModal from "./components/UpdateModal.vue";
 import SettingsModal from "./components/SettingsModal.vue";
+import TourOverlay from "./components/TourOverlay.vue";
 import { useWorkspaceStore } from "./stores/workspace";
 import { useTabsStore } from "./stores/tabs";
 import { usePaletteStore } from "./stores/palette";
 import { useThemeStore } from "./stores/theme";
 import { useUiStore } from "./stores/ui";
 import { useUpdaterStore } from "./stores/updater";
+import { useI18n } from "./i18n";
 
 function basename(p: string): string {
   const parts = p.replace(/\\/g, "/").split("/").filter(Boolean);
@@ -36,6 +38,7 @@ const palette = usePaletteStore();
 const theme = useThemeStore();
 const ui = useUiStore();
 const updater = useUpdaterStore();
+const { t, initLocale } = useI18n();
 
 const modKey =
   typeof navigator !== "undefined" && navigator.platform.includes("Mac")
@@ -72,17 +75,20 @@ function onKeydown(e: KeyboardEvent) {
       e.preventDefault();
       ui.toggleSidebar();
     }
-  } else if (e.key === "`") {
+  } else if (e.key === "`" || key === "j") {
     e.preventDefault();
     ui.toggleBottomPanel();
   }
 }
 
 onMounted(async () => {
+  await initLocale();
   window.addEventListener("keydown", onKeydown);
   await theme.init();
   await workspace.restoreWorkspace();
   if (workspace.rootPaths.length > 0) await palette.refresh(workspace.rootPaths);
+  // Start tour on first launch (checks tour_seen flag internally)
+  void ui.initTour();
 
   unlistenOpenFile = await listen<string>("open-file-request", (e) => {
     void openExternalMd(e.payload);
@@ -134,10 +140,9 @@ watch(
             <EditorArea v-if="tabs.activeTab" />
             <div v-else class="empty-editor">
               <template v-if="workspace.hasWorkspace">
-                Select a .md file from the sidebar, or press
-                <kbd>{{ modKey }}+P</kbd>.
+                {{ t('app.empty.selectFile').replace('{key}', modKey) }}
               </template>
-              <template v-else>Add a folder to begin.</template>
+              <template v-else>{{ t('app.empty.noWorkspace') }}</template>
             </div>
           </main>
         </div>
@@ -149,9 +154,13 @@ watch(
       <CommandPalette />
       <SettingsModal />
       <UpdateModal />
+      <TourOverlay v-if="ui.tourActive" />
       <Teleport to="body">
         <div v-if="updater.toastMessage" class="update-toast">
           {{ updater.toastMessage }}
+        </div>
+        <div v-if="ui.toastMessage" class="app-toast">
+          {{ ui.toastMessage }}
         </div>
       </Teleport>
     </div>
@@ -181,6 +190,28 @@ watch(
   display: flex;
   flex: 1;
   min-height: 0;
+}
+
+.app-toast {
+  position: fixed;
+  bottom: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-sidebar);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 7px 16px;
+  border-radius: 4px;
+  font-size: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  z-index: 300;
+  animation: toast-slide-up 0.18s ease-out;
+  white-space: nowrap;
+}
+
+@keyframes toast-slide-up {
+  from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 
 kbd {

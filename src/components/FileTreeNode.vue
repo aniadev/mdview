@@ -5,6 +5,7 @@ import type { TreeNode } from "../types";
 import { useWorkspaceStore } from "../stores/workspace";
 import { useTabsStore } from "../stores/tabs";
 import { useFsUiStore } from "../stores/fsui";
+import { isAgentFile } from "../utils/agentFiles";
 import InlineFilenameInput from "./InlineFilenameInput.vue";
 
 const props = defineProps<{
@@ -18,6 +19,7 @@ const fsui = useFsUiStore();
 
 const indent = computed(() => `${props.depth * 12 + 4}px`);
 const isMdFile = computed(() => !props.node.is_dir && props.node.has_md);
+const isAgent = computed(() => isMdFile.value && isAgentFile(props.node.name));
 const dim = computed(() => !props.node.has_md);
 const selected = computed(
   () => !props.node.is_dir && tabs.activePath === props.node.path
@@ -113,6 +115,7 @@ async function onRenameCommit(filename: string) {
         </span>
         <span class="tree-icon">
           <Icon v-if="node.is_dir" :icon="node.expanded ? 'lucide:folder-open' : 'lucide:folder'" width="14" height="14" />
+          <Icon v-else-if="isAgent" icon="lucide:bot" width="14" height="14" :style="{ color: 'var(--accent)' }" />
           <Icon v-else-if="isMdFile" icon="lucide:file-text" width="14" height="14" />
           <Icon v-else icon="lucide:file" width="14" height="14" />
         </span>

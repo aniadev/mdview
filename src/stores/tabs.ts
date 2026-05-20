@@ -126,6 +126,11 @@ export const useTabsStore = defineStore("tabs", () => {
     }
   }
 
+  function moveTab(fromIndex: number, toIndex: number) {
+    const [moved] = tabs.value.splice(fromIndex, 1);
+    tabs.value.splice(toIndex, 0, moved);
+  }
+
   async function closeAllTabs(): Promise<void> {
     const dirty = tabs.value.filter(isDirty);
     if (dirty.length > 0) {
@@ -155,5 +160,6 @@ export const useTabsStore = defineStore("tabs", () => {
     setActive,
     handleFileRenamed,
     handleFileDeleted,
+    moveTab,
   };
 });

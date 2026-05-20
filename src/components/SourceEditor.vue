@@ -8,14 +8,18 @@ import { searchKeymap, highlightSelectionMatches } from "@codemirror/search";
 import { markdown } from "@codemirror/lang-markdown";
 import { oneDark } from "@codemirror/theme-one-dark";
 import { syntaxHighlighting, defaultHighlightStyle, bracketMatching } from "@codemirror/language";
+import { headingPxToProgress, headingProgressToPx } from "../utils/scrollSync";
 import { useThemeStore } from "../stores/theme";
+import { useUiStore } from "../stores/ui";
 
 const themeStore = useThemeStore();
+const uiStore = useUiStore();
 
 const props = defineProps<{
   modelValue: string;
   tabKey: string;
   scrollPercent?: number;
+  scrollToHeading?: number;
 }>();
 
 const emit = defineEmits<{
@@ -28,9 +32,42 @@ const emit = defineEmits<{
 const host = ref<HTMLDivElement | null>(null);
 let view: EditorView | null = null;
 let suppressEmit = false;
-let editorExpectedScrollPct = -1;
+let scrollRafPending = false;
+let snapDebounce: number | null = null;
+const wordWrap = ref(false);
+const editorHeadings = ref<{ line: number; level: number }[]>([]);
+
+function updateEditorHeadings(source: string) {
+  const result: { line: number; level: number }[] = [];
+  const lines = source.split("\n");
+  for (let i = 0; i < lines.length; i++) {
+    const m = lines[i].match(/^(#{1,6})\s+/);
+    if (m) result.push({ line: i + 1, level: m[1].length });
+  }
+  editorHeadings.value = result;
+}
+
+
+
+function getEditorHeadingPx(): number[] {
+  if (!view) return [];
+  const positions: number[] = [];
+  for (const h of editorHeadings.value) {
+    const block = view.lineBlockAt(view.state.doc.line(h.line).from);
+    if (block) positions.push(block.top);
+  }
+  return positions;
+}
+
+function findHeadingIdxFromPx(headPx: number[], scrollTop: number): number {
+  for (let i = headPx.length - 1; i >= 0; i--) {
+    if (headPx[i] <= scrollTop + 2) return i;
+  }
+  return -1;
+}
 
 function build(initial: string): EditorView {
+  const wrapExt = wordWrap.value ? [EditorView.lineWrapping] : [];
   const baseExt = [
     lineNumbers(),
     highlightActiveLine(),
@@ -47,6 +84,7 @@ function build(initial: string): EditorView {
     extensions: [
       ...baseExt,
       ...themeExt,
+      ...wrapExt,
       keymap.of([
         ...defaultKeymap,
         ...historyKeymap,
@@ -63,21 +101,33 @@ function build(initial: string): EditorView {
       ]),
       EditorView.lineWrapping,
       EditorView.updateListener.of((upd) => {
-        if (upd.docChanged && !suppressEmit) {
-          emit("update:modelValue", upd.state.doc.toString());
+        if (upd.docChanged) {
+          updateEditorHeadings(upd.state.doc.toString());
+          if (!suppressEmit) {
+            emit("update:modelValue", upd.state.doc.toString());
+          }
         }
       }),
       EditorView.domEventHandlers({
         scroll: (_e, v) => {
-          const el = v.scrollDOM;
-          const max = el.scrollHeight - el.clientHeight;
-          const actualPct = max > 0 ? el.scrollTop / max : 0;
-          if (editorExpectedScrollPct >= 0 && Math.abs(actualPct - editorExpectedScrollPct) < 0.02) {
-            editorExpectedScrollPct = -1;
-            return;
-          }
-          editorExpectedScrollPct = -1;
-          emit("scroll", actualPct);
+          if (scrollRafPending) return;
+          scrollRafPending = true;
+          requestAnimationFrame(() => {
+            scrollRafPending = false;
+            const el = v.scrollDOM;
+            const headPx = getEditorHeadingPx();
+            const progress = headingPxToProgress(el.scrollTop, headPx, el.scrollHeight);
+            
+            emit("scroll", progress);
+            if (snapDebounce !== null) clearTimeout(snapDebounce);
+            snapDebounce = window.setTimeout(() => {
+              snapDebounce = null;
+              if (!v) return;
+              const px = getEditorHeadingPx();
+              const idx = findHeadingIdxFromPx(px, v.scrollDOM.scrollTop);
+              if (idx >= 0) uiStore.setActiveHeadingIndex(idx);
+            }, 300);
+          });
         },
       }),
     ],
@@ -87,6 +137,7 @@ function build(initial: string): EditorView {
 
 onMounted(() => {
   view = build(props.modelValue);
+  updateEditorHeadings(props.modelValue);
 });
 
 onBeforeUnmount(() => {
@@ -100,6 +151,7 @@ watch(
     if (!view || !host.value) return;
     view.destroy();
     view = build(props.modelValue);
+    updateEditorHeadings(props.modelValue);
   }
 );
 
@@ -110,6 +162,7 @@ watch(
     const current = view.state.doc.toString();
     view.destroy();
     view = build(current);
+    updateEditorHeadings(current);
   }
 );
 
@@ -131,11 +184,27 @@ watch(
   (pct) => {
     if (pct === undefined || !view) return;
     const dom = view.scrollDOM;
-    const max = dom.scrollHeight - dom.clientHeight;
-    if (max <= 0) return;
-    const target = Math.round(pct * max);
+    const headPx = getEditorHeadingPx();
+    const target = headingProgressToPx(pct, headPx, dom.scrollHeight);
     if (Math.abs(dom.scrollTop - target) > 2) {
-      editorExpectedScrollPct = pct;
+      dom.scrollTop = target;
+    }
+  }
+);
+
+watch(
+  () => props.scrollToHeading,
+  (idx) => {
+    if (idx === undefined || idx < 0 || !view) return;
+    const headings = editorHeadings.value;
+    if (idx >= headings.length) return;
+    const line = view.state.doc.line(headings[idx].line);
+    const dom = view.scrollDOM;
+    const headPx = getEditorHeadingPx();
+    const target = headPx.length > 0
+      ? headingProgressToPx((idx + 1) / (headPx.length + 1), headPx, dom.scrollHeight)
+      : (line.from / view.state.doc.length) * dom.scrollHeight;
+    if (Math.abs(dom.scrollTop - target) > 2) {
       dom.scrollTop = target;
     }
   }
@@ -233,6 +302,14 @@ function actTable() {
 }
 function actLink() { wrapSelection("[", "](https://)", "text"); }
 function actImage() { wrapSelection("![", "](https://)", "alt"); }
+
+function toggleWrap() {
+  wordWrap.value = !wordWrap.value;
+  if (!view || !host.value) return;
+  const current = view.state.doc.toString();
+  view.destroy();
+  view = build(current);
+}
 </script>
 
 <template>
@@ -255,6 +332,7 @@ function actImage() { wrapSelection("![", "](https://)", "alt"); }
       <button class="tb-btn" title="Link" @click="actLink"><Icon icon="lucide:link" width="14" height="14" /></button>
       <button class="tb-btn" title="Image" @click="actImage"><Icon icon="lucide:image" width="14" height="14" /></button>
       <span class="tb-spacer"></span>
+      <button class="tb-btn" :class="{ active: wordWrap }" title="Toggle Word Wrap" @click="toggleWrap"><Icon icon="lucide:wrap-text" width="14" height="14" /></button>
       <button class="tb-btn" title="Open preview in browser" @click="emit('open-browser')"><Icon icon="lucide:external-link" width="14" height="14" /></button>
     </div>
     <div ref="host" class="source-editor"></div>

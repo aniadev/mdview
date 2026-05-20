@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from "vue";
+import { ref, computed, watch, onMounted, nextTick } from "vue";
 import { Icon } from "@iconify/vue";
 import MarkdownIt from "markdown-it";
 import markdownItAnchor from "markdown-it-anchor";
@@ -9,12 +9,20 @@ import { convertFileSrc } from "@tauri-apps/api/core";
 import hljsDarkCss from "highlight.js/styles/github-dark.css?inline";
 import hljsLightCss from "highlight.js/styles/github.css?inline";
 import "katex/dist/katex.min.css";
+import { headingPxToProgress, headingProgressToPx } from "../utils/scrollSync";
 import { useThemeStore } from "../stores/theme";
+import { useUiStore } from "../stores/ui";
+import type { TocHeading } from "./TocPanel.vue";
+
+interface HeadingInfo extends TocHeading {
+  offsetTop: number;
+}
 
 const props = defineProps<{
   source: string;
   filePath: string;
   scrollPercent: number;
+  scrollToHeading?: number;
 }>();
 
 const emit = defineEmits<{
@@ -22,6 +30,7 @@ const emit = defineEmits<{
 }>();
 
 const themeStore = useThemeStore();
+const uiStore = useUiStore();
 
 const md = new MarkdownIt({
   html: true,
@@ -84,6 +93,14 @@ let debounceTimer: number | null = null;
 let mermaidInitialized = false;
 let renderSeq = 0;
 
+const root = ref<HTMLDivElement | null>(null);
+const lastPct = ref(0);
+let resizeObs: ResizeObserver | null = null;
+let bodyEl: HTMLElement | null = null;
+const headings = ref<HeadingInfo[]>([]);
+let previewScrollRafPending = false;
+let previewSnapDebounce: number | null = null;
+
 async function runMermaid(seq: number) {
   if (!root.value) return;
   const nodes = root.value.querySelectorAll<HTMLElement>("pre.mermaid");
@@ -105,6 +122,49 @@ async function runMermaid(seq: number) {
   }
 }
 
+function extractHeadings(): HeadingInfo[] {
+  if (!root.value) return [];
+  const els = root.value.querySelectorAll<HTMLElement>("h1,h2,h3,h4,h5,h6");
+  return Array.from(els).map((el) => ({
+    id: el.id || "",
+    text: el.textContent || "",
+    level: parseInt(el.tagName[1]),
+    offsetTop: el.offsetTop,
+  }));
+}
+
+function getPreviewHeadingPx(): number[] {
+  return headings.value.map((h) => h.offsetTop);
+}
+
+function findHeadingIndexAt(scrollTop: number): number {
+  const px = getPreviewHeadingPx();
+  for (let i = px.length - 1; i >= 0; i--) {
+    if (px[i] <= scrollTop + 50) return i;
+  }
+  return -1;
+}
+
+function applyScroll() {
+  if (!root.value) return;
+  const px = getPreviewHeadingPx();
+  const target = headingProgressToPx(lastPct.value, px, root.value.scrollHeight);
+  if (Math.abs(root.value.scrollTop - target) > 2) {
+    root.value.scrollTop = target;
+  }
+}
+
+function applyHeadingScroll(index: number) {
+  if (!root.value) return;
+  const h = headings.value;
+  if (index >= 0 && index < h.length) {
+    const target = h[index].offsetTop;
+    if (Math.abs(root.value.scrollTop - target) > 2) {
+      root.value.scrollTop = target;
+    }
+  }
+}
+
 async function render() {
   const raw = md.render(props.source ?? "");
   const baseDir = dirname(props.filePath);
@@ -119,6 +179,9 @@ async function render() {
   );
   const seq = ++renderSeq;
   await nextTick();
+  headings.value = extractHeadings();
+  const tocHeadings: TocHeading[] = headings.value.map(({ id, text, level }) => ({ id, text, level }));
+  uiStore.setCurrentHeadings(tocHeadings);
   await runMermaid(seq);
 }
 
@@ -152,40 +215,11 @@ watch(
   }
 );
 
-onBeforeUnmount(() => {
-  if (debounceTimer !== null) window.clearTimeout(debounceTimer);
-  resizeObs?.disconnect();
-  resizeObs = null;
-  bodyEl = null;
-});
-
-const root = ref<HTMLDivElement | null>(null);
-const lastPct = ref(0);
-let resizeObs: ResizeObserver | null = null;
-let bodyEl: HTMLElement | null = null;
-let previewExpectedScrollPct = -1;
-
-function applyScroll() {
-  if (!root.value) return;
-  const max = root.value.scrollHeight - root.value.clientHeight;
-  if (max <= 0) return;
-  const target = Math.round(lastPct.value * max);
-  if (Math.abs(root.value.scrollTop - target) > 2) {
-    previewExpectedScrollPct = lastPct.value;
-    root.value.scrollTop = target;
-  }
-}
-
-watch(
-  () => props.scrollPercent,
-  (pct) => {
-    lastPct.value = pct;
-    applyScroll();
-  }
-);
-
 watch(html, async () => {
   await nextTick();
+  headings.value = extractHeadings();
+  const tocHeadings: TocHeading[] = headings.value.map(({ id, text, level }) => ({ id, text, level }));
+  uiStore.setCurrentHeadings(tocHeadings);
   if (!root.value) return;
   const next = root.value.querySelector<HTMLElement>(".markdown-body");
   if (next !== bodyEl) {
@@ -196,9 +230,31 @@ watch(html, async () => {
   applyScroll();
 });
 
+watch(
+  () => props.scrollPercent,
+  (pct) => {
+    lastPct.value = pct;
+    applyScroll();
+  }
+);
+
+watch(
+  () => props.scrollToHeading,
+  (idx) => {
+    if (idx !== undefined && idx >= 0) {
+      applyHeadingScroll(idx);
+    }
+  }
+);
+
 onMounted(() => {
   applyHljsTheme(themeStore.previewTheme);
-  resizeObs = new ResizeObserver(() => applyScroll());
+  resizeObs = new ResizeObserver(() => {
+    headings.value = extractHeadings();
+    const tocHeadings: TocHeading[] = headings.value.map(({ id, text, level }) => ({ id, text, level }));
+    uiStore.setCurrentHeadings(tocHeadings);
+    applyScroll();
+  });
   if (root.value) {
     bodyEl = root.value.querySelector<HTMLElement>(".markdown-body");
     if (bodyEl) resizeObs.observe(bodyEl);
@@ -255,16 +311,32 @@ body { margin:0; background:var(--bg); color:var(--text); font: 16px/1.6 -apple-
 `;
 
 function onUserScroll() {
-  if (!root.value) return;
-  const el = root.value;
-  const max = el.scrollHeight - el.clientHeight;
-  const actualPct = max > 0 ? el.scrollTop / max : 0;
-  if (previewExpectedScrollPct >= 0 && Math.abs(actualPct - previewExpectedScrollPct) < 0.02) {
-    previewExpectedScrollPct = -1;
-    return;
-  }
-  previewExpectedScrollPct = -1;
-  emit("scroll", actualPct);
+  if (previewScrollRafPending) return;
+  previewScrollRafPending = true;
+  requestAnimationFrame(() => {
+    previewScrollRafPending = false;
+    if (!root.value) return;
+    const el = root.value;
+    const px = getPreviewHeadingPx();
+    const progress = headingPxToProgress(el.scrollTop, px, el.scrollHeight);
+    
+    lastPct.value = progress;
+    emit("scroll", progress);
+    
+    if (previewSnapDebounce !== null) clearTimeout(previewSnapDebounce);
+    previewSnapDebounce = window.setTimeout(() => {
+      previewSnapDebounce = null;
+      if (!root.value) return;
+      const idx = findHeadingIndexAt(root.value.scrollTop);
+      if (idx >= 0) {
+        uiStore.setActiveHeadingIndex(idx);
+      }
+    }, 300);
+  });
+}
+
+function printPdf() {
+  window.print();
 }
 
 defineExpose({
@@ -278,6 +350,9 @@ const isEmpty = computed(() => !props.source || props.source.trim() === "");
   <div class="preview-wrap">
     <div class="preview-toolbar">
       <span class="tb-spacer"></span>
+      <button class="icon-btn" title="Print / Export PDF" @click="printPdf">
+        <Icon icon="lucide:printer" width="16" height="16" />
+      </button>
       <button
         class="icon-btn"
         :title="themeStore.previewTheme === 'dark' ? 'Switch preview to light' : 'Switch preview to dark'"

@@ -1,13 +1,14 @@
 <script setup lang="ts">
-import { onMounted, onBeforeUnmount, ref } from "vue";
-import { Icon } from "@iconify/vue";
-import { confirm } from "@tauri-apps/plugin-dialog";
-import { useWorkspaceStore } from "../stores/workspace";
-import { useTabsStore } from "../stores/tabs";
-import { useFsUiStore } from "../stores/fsui";
-import { useUiStore } from "../stores/ui";
-import FileTreeNode from "./FileTreeNode.vue";
-import InlineFilenameInput from "./InlineFilenameInput.vue";
+import { onMounted, onBeforeUnmount, ref } from 'vue';
+import { Icon } from '@iconify/vue';
+import { confirm } from '@tauri-apps/plugin-dialog';
+import { useWorkspaceStore } from '../stores/workspace';
+import { useTabsStore } from '../stores/tabs';
+import { useFsUiStore } from '../stores/fsui';
+import { useUiStore } from '../stores/ui';
+import FileTreeNode from './FileTreeNode.vue';
+import InlineFilenameInput from './InlineFilenameInput.vue';
+import TocPanel from './TocPanel.vue';
 
 const workspace = useWorkspaceStore();
 const tabs = useTabsStore();
@@ -17,11 +18,15 @@ const ui = useUiStore();
 const rootInputRef = ref<InstanceType<typeof InlineFilenameInput> | null>(null);
 const rootDirInputRef = ref<InstanceType<typeof InlineFilenameInput> | null>(null);
 
+function onTocNavigate(index: number) {
+  ui.triggerNavigateHeading(index);
+}
+
 const rootCtxMenu = ref<{ visible: boolean; x: number; y: number; rootPath: string }>({
   visible: false,
   x: 0,
   y: 0,
-  rootPath: "",
+  rootPath: '',
 });
 
 function onWindowClick() {
@@ -29,23 +34,19 @@ function onWindowClick() {
   if (rootCtxMenu.value.visible) rootCtxMenu.value.visible = false;
 }
 
-onMounted(() => window.addEventListener("click", onWindowClick));
-onBeforeUnmount(() => window.removeEventListener("click", onWindowClick));
+onMounted(() => window.addEventListener('click', onWindowClick));
+onBeforeUnmount(() => window.removeEventListener('click', onWindowClick));
 
 async function ctxNewFile() {
   fsui.requestCreateIn(
-    fsui.ctxMenu.isDir
-      ? fsui.ctxMenu.targetPath
-      : parentOf(fsui.ctxMenu.targetPath)
+    fsui.ctxMenu.isDir ? fsui.ctxMenu.targetPath : parentOf(fsui.ctxMenu.targetPath),
   );
   fsui.closeContextMenu();
 }
 
 async function ctxNewFolder() {
   fsui.requestCreateDirIn(
-    fsui.ctxMenu.isDir
-      ? fsui.ctxMenu.targetPath
-      : parentOf(fsui.ctxMenu.targetPath)
+    fsui.ctxMenu.isDir ? fsui.ctxMenu.targetPath : parentOf(fsui.ctxMenu.targetPath),
   );
   fsui.closeContextMenu();
 }
@@ -58,10 +59,10 @@ async function ctxRename() {
 async function ctxDelete() {
   const target = fsui.ctxMenu.targetPath;
   fsui.closeContextMenu();
-  const ok = await confirm(
-    `Delete "${baseName(target)}"? This cannot be undone.`,
-    { title: "Delete file", kind: "warning" }
-  );
+  const ok = await confirm(`Delete "${baseName(target)}"? This cannot be undone.`, {
+    title: 'Delete file',
+    kind: 'warning',
+  });
   if (!ok) return;
   try {
     await workspace.deleteMdFile(target);
@@ -72,21 +73,21 @@ async function ctxDelete() {
 }
 
 function baseName(p: string) {
-  const parts = p.replace(/\\/g, "/").split("/").filter(Boolean);
+  const parts = p.replace(/\\/g, '/').split('/').filter(Boolean);
   return parts[parts.length - 1] || p;
 }
 
 function parentOf(p: string) {
-  const norm = p.replace(/\\/g, "/");
-  const idx = norm.lastIndexOf("/");
-  return idx >= 0 ? norm.slice(0, idx) : "";
+  const norm = p.replace(/\\/g, '/');
+  const idx = norm.lastIndexOf('/');
+  return idx >= 0 ? norm.slice(0, idx) : '';
 }
 
 async function onRootCreateCommit(rootPath: string, filename: string) {
   try {
     const newPath = await workspace.createMdFile(rootPath, filename);
     fsui.cancelInputs();
-    const base = newPath.replace(/\\/g, "/").split("/").pop() ?? filename;
+    const base = newPath.replace(/\\/g, '/').split('/').pop() ?? filename;
     await tabs.openFile(newPath, base);
   } catch (e) {
     rootInputRef.value?.setError(String(e));
@@ -109,15 +110,15 @@ function onRootCtxMenu(e: MouseEvent, rootPath: string) {
 
 function removeRootFromWs() {
   const path = rootCtxMenu.value.rootPath;
-  rootCtxMenu.value = { visible: false, x: 0, y: 0, rootPath: "" };
+  rootCtxMenu.value = { visible: false, x: 0, y: 0, rootPath: '' };
   workspace.removeRoot(path);
 }
 
 function startRootCreate(rootPath: string) {
-  const activeFilePath = tabs.activeTab?.path?.replace(/\\/g, "/");
-  const normalizedRoot = rootPath.replace(/\\/g, "/");
-  if (activeFilePath?.startsWith(normalizedRoot + "/")) {
-    const lastSlash = activeFilePath.lastIndexOf("/");
+  const activeFilePath = tabs.activeTab?.path?.replace(/\\/g, '/');
+  const normalizedRoot = rootPath.replace(/\\/g, '/');
+  if (activeFilePath?.startsWith(normalizedRoot + '/')) {
+    const lastSlash = activeFilePath.lastIndexOf('/');
     fsui.requestCreateIn(activeFilePath.slice(0, lastSlash));
   } else {
     fsui.requestCreateIn(rootPath);
@@ -132,11 +133,8 @@ function startRootCreateDir(rootPath: string) {
 <template>
   <div class="explorer-panel">
     <header class="sidebar-header">
-      <span
-        class="ws-name"
-        :title="workspace.workspaceFile ?? workspace.rootPath ?? ''"
-      >
-        {{ workspace.hasWorkspace ? workspace.displayName : "Explorer" }}
+      <span class="ws-name" :title="workspace.workspaceFile ?? workspace.rootPath ?? ''">
+        {{ workspace.hasWorkspace ? workspace.displayName : 'Explorer' }}
       </span>
       <div class="sidebar-actions">
         <button
@@ -163,11 +161,7 @@ function startRootCreateDir(rootPath: string) {
           >
             <Icon icon="lucide:save" width="14" height="14" />
           </button>
-          <button
-            class="icon-btn"
-            title="Close workspace"
-            @click="workspace.removeWorkspace()"
-          >
+          <button class="icon-btn" title="Close workspace" @click="workspace.removeWorkspace()">
             <Icon icon="lucide:x" width="14" height="14" />
           </button>
         </template>
@@ -177,12 +171,27 @@ function startRootCreateDir(rootPath: string) {
     <div class="sidebar-activity-row">
       <button
         class="activity-btn"
+        :class="{ active: ui.sidebarView === 'explorer' }"
+        title="File Explorer"
+        @click="ui.setSidebarView('explorer')"
+      >
+        <Icon icon="lucide:files" width="14" height="14" />
+      </button>
+      <button
+        class="activity-btn"
+        :class="{ active: ui.sidebarView === 'outline' }"
+        title="Outline (TOC)"
+        @click="ui.setSidebarView('outline')"
+      >
+        <Icon icon="lucide:list-tree" width="14" height="14" />
+      </button>
+      <button
+        class="activity-btn"
         :class="{ active: ui.bottomPanelVisible }"
         title="Toggle Terminal (Cmd/Ctrl+`)"
         @click="ui.toggleBottomPanel()"
       >
         <Icon icon="lucide:terminal" width="14" height="14" />
-        <span>Terminal</span>
       </button>
       <button
         class="activity-btn"
@@ -196,32 +205,59 @@ function startRootCreateDir(rootPath: string) {
     <div class="sidebar-body">
       <div v-if="!workspace.hasWorkspace" class="sidebar-empty">
         <p>No folder opened.</p>
-        <button class="primary" @click="workspace.addFolderDirect()">
-          Add Folder
-        </button>
+        <div v-if="workspace.recentWorkspaces.length" class="recent-list">
+          <div class="recent-header">Recent</div>
+          <button
+            v-for="(p, i) in workspace.recentWorkspaces"
+            :key="i"
+            class="recent-item"
+            :title="p"
+            @click="
+              p.toLowerCase().endsWith('.code-workspace')
+                ? workspace.openWorkspaceFile(p)
+                : workspace.openFolder(p)
+            "
+          >
+            <Icon
+              :icon="
+                p.toLowerCase().endsWith('.code-workspace') ? 'lucide:book-open' : 'lucide:folder'
+              "
+              width="14"
+              height="14"
+            />
+            <span>{{ p.replace(/\\/g, '/').split('/').filter(Boolean).pop() || p }}</span>
+            <span class="recent-path">{{
+              p.replace(/\\/g, '/').split('/').filter(Boolean).slice(0, -1).join('/') || '/'
+            }}</span>
+          </button>
+        </div>
+        <button class="primary" @click="workspace.addFolderDirect()">Add Folder</button>
         <button @click="workspace.addWorkspace()">Open Workspace…</button>
       </div>
 
-      <template v-else>
-        <div
-          v-if="workspace.loading"
-          class="sidebar-empty"
-          style="height: auto; padding: 16px"
-        >
+      <TocPanel
+        v-else-if="ui.sidebarView === 'outline'"
+        :headings="ui.currentHeadings"
+        :active-index="ui.activeHeadingIndex"
+        @navigate="onTocNavigate"
+      />
+
+      <template v-else-if="ui.sidebarView === 'explorer'">
+        <div v-if="workspace.loading" class="sidebar-empty" style="height: auto; padding: 16px">
           <p>Loading…</p>
         </div>
         <template v-else>
-          <section
-            v-for="root in workspace.roots"
-            :key="root.path"
-            class="ws-root"
-          >
-            <div
-              class="ws-root-header"
-              @contextmenu.prevent="onRootCtxMenu($event, root.path)"
-            >
+          <section v-for="root in workspace.roots" :key="root.path" class="ws-root">
+            <div class="ws-root-header" @contextmenu.prevent="onRootCtxMenu($event, root.path)">
               <span class="ws-root-name" :title="root.path">{{ root.name }}</span>
               <span class="ws-root-actions">
+                <button
+                  class="icon-btn ws-root-add"
+                  title="Refresh Explorer"
+                  @click="workspace.refreshRootPreservingState(root.path)"
+                >
+                  <Icon icon="lucide:refresh-cw" width="14" height="14" />
+                </button>
                 <button
                   class="icon-btn ws-root-add"
                   title="New file in this root"
@@ -238,35 +274,25 @@ function startRootCreateDir(rootPath: string) {
                 </button>
               </span>
             </div>
-            <div
-              v-if="root.loadError"
-              class="ws-root-error"
-              :title="root.path"
-            >
+            <div v-if="root.loadError" class="ws-root-error" :title="root.path">
               {{ root.loadError }}
             </div>
             <ul v-else class="tree">
-              <li
-                v-if="fsui.pendingCreateInDir === root.path"
-                class="tree-node"
-              >
+              <li v-if="fsui.pendingCreateInDir === root.path" class="tree-node">
                 <InlineFilenameInput
                   ref="rootInputRef"
                   :depth="0"
                   placeholder="filename.md"
-                  @commit="(v) => onRootCreateCommit(root.path, v)"
+                  @commit="v => onRootCreateCommit(root.path, v)"
                   @cancel="fsui.cancelInputs()"
                 />
               </li>
-              <li
-                v-if="fsui.pendingCreateDirInDir === root.path"
-                class="tree-node"
-              >
+              <li v-if="fsui.pendingCreateDirInDir === root.path" class="tree-node">
                 <InlineFilenameInput
                   ref="rootDirInputRef"
                   :depth="0"
                   placeholder="folder-name"
-                  @commit="(v) => onRootCreateDirCommit(root.path, v)"
+                  @commit="v => onRootCreateDirCommit(root.path, v)"
                   @cancel="fsui.cancelInputs()"
                 />
               </li>
@@ -278,11 +304,7 @@ function startRootCreateDir(rootPath: string) {
               />
             </ul>
           </section>
-          <div
-            v-if="!workspace.hasAnyMd"
-            class="sidebar-empty"
-            style="height: auto; padding: 16px"
-          >
+          <div v-if="!workspace.hasAnyMd" class="sidebar-empty" style="height: auto; padding: 16px">
             <p>No .md files found.</p>
           </div>
         </template>
@@ -296,26 +318,10 @@ function startRootCreateDir(rootPath: string) {
         :style="{ left: fsui.ctxMenu.x + 'px', top: fsui.ctxMenu.y + 'px' }"
         @click.stop
       >
-        <button v-if="fsui.ctxMenu.isDir" class="ctx-item" @click="ctxNewFile">
-          New File
-        </button>
-        <button v-if="fsui.ctxMenu.isDir" class="ctx-item" @click="ctxNewFolder">
-          New Folder
-        </button>
-        <button
-          v-if="fsui.ctxMenu.isMdFile"
-          class="ctx-item"
-          @click="ctxRename"
-        >
-          Rename
-        </button>
-        <button
-          v-if="fsui.ctxMenu.isMdFile"
-          class="ctx-item"
-          @click="ctxDelete"
-        >
-          Delete
-        </button>
+        <button v-if="fsui.ctxMenu.isDir" class="ctx-item" @click="ctxNewFile">New File</button>
+        <button v-if="fsui.ctxMenu.isDir" class="ctx-item" @click="ctxNewFolder">New Folder</button>
+        <button v-if="fsui.ctxMenu.isMdFile" class="ctx-item" @click="ctxRename">Rename</button>
+        <button v-if="fsui.ctxMenu.isMdFile" class="ctx-item" @click="ctxDelete">Delete</button>
       </div>
     </Teleport>
 
@@ -326,9 +332,7 @@ function startRootCreateDir(rootPath: string) {
         :style="{ left: rootCtxMenu.x + 'px', top: rootCtxMenu.y + 'px' }"
         @click.stop
       >
-        <button class="ctx-item" @click="removeRootFromWs">
-          Remove Folder from Workspace
-        </button>
+        <button class="ctx-item" @click="removeRootFromWs">Remove Folder from Workspace</button>
       </div>
     </Teleport>
   </div>

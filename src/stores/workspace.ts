@@ -14,6 +14,7 @@ import { useTabsStore } from "./tabs";
 const STORE_FILE = "mdview-settings.json";
 const KEY_WORKSPACE_PATH = "workspace_path"; // legacy single-folder
 const KEY_WORKSPACE_FILE = "workspace_file"; // path to .code-workspace
+const KEY_RECENT_WORKSPACES = "recent_workspaces";
 
 function basename(p: string): string {
   const parts = p.replace(/\\/g, "/").split("/").filter(Boolean);
@@ -30,6 +31,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
   const workspaceFile = ref<string | null>(null);
   const error = ref<string | null>(null);
   const loading = ref(false);
+  const recentWorkspaces = ref<string[]>([]);
   let store: Store | null = null;
 
   const hasWorkspace = computed(() => roots.value.length > 0);
@@ -59,6 +61,14 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     return store;
   }
 
+  function addRecent(path: string) {
+    recentWorkspaces.value = [path, ...recentWorkspaces.value.filter((p) => p !== path)].slice(0, 10);
+    void getStore().then((s) => {
+      s.set(KEY_RECENT_WORKSPACES, recentWorkspaces.value);
+      s.save();
+    });
+  }
+
   async function loadSingleRoot(path: string): Promise<WorkspaceRoot> {
     const root: WorkspaceRoot = {
       path,
@@ -76,6 +86,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     } finally {
       root.loading = false;
     }
+    addRecent(path);
     return root;
   }
 
@@ -90,6 +101,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
       await s.set(KEY_WORKSPACE_PATH, path);
       await s.delete(KEY_WORKSPACE_FILE);
       await s.save();
+      addRecent(path);
     } finally {
       loading.value = false;
     }
@@ -130,6 +142,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     } finally {
       loading.value = false;
     }
+    addRecent(filePath);
   }
 
   async function addWorkspace() {
@@ -179,6 +192,8 @@ export const useWorkspaceStore = defineStore("workspace", () => {
 
   async function restoreWorkspace() {
     const s = await getStore();
+    const recent = await s.get<string[]>(KEY_RECENT_WORKSPACES);
+    if (recent && Array.isArray(recent)) recentWorkspaces.value = recent.slice(0, 10);
     const savedFile = await s.get<string>(KEY_WORKSPACE_FILE);
     if (savedFile) {
       const exists = await invoke<boolean>("path_exists", { path: savedFile });
@@ -251,6 +266,41 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     if (!r) return;
     try {
       r.children = await listDir(rootPathVal);
+    } catch (e) {
+      error.value = String(e);
+    }
+  }
+
+  function collectExpandedPaths(nodes: TreeNode[]): string[] {
+    const paths: string[] = [];
+    for (const n of nodes) {
+      if (n.expanded && n.is_dir) paths.push(n.path);
+      if (n.children) paths.push(...collectExpandedPaths(n.children));
+    }
+    return paths;
+  }
+
+  async function reExpandPaths(nodes: TreeNode[], expandedPaths: string[]): Promise<void> {
+    for (const node of nodes) {
+      if (expandedPaths.includes(node.path) && node.is_dir) {
+        try {
+          node.children = await listDir(node.path);
+        } catch {
+          /* keep old children */
+        }
+        node.expanded = true;
+        if (node.children) await reExpandPaths(node.children, expandedPaths);
+      }
+    }
+  }
+
+  async function refreshRootPreservingState(rootPathVal: string) {
+    const r = roots.value.find((x) => x.path === rootPathVal);
+    if (!r) return;
+    try {
+      const expanded = collectExpandedPaths(r.children);
+      r.children = await listDir(rootPathVal);
+      await reExpandPaths(r.children, expanded);
     } catch (e) {
       error.value = String(e);
     }
@@ -461,6 +511,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     restoreWorkspace,
     toggleDir,
     refreshRoot,
+    refreshRootPreservingState,
     refreshParentOf,
     createMdFile,
     createDir,
@@ -469,5 +520,6 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     addFolderToCurrentWorkspace,
     saveCurrentWorkspace,
     saveAsNewWorkspace,
+    recentWorkspaces,
   };
 });

@@ -3,7 +3,6 @@ import { onMounted, onBeforeUnmount, ref, watch } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { Icon } from "@iconify/vue";
-import AppHeader from "./components/AppHeader.vue";
 import Sidebar from "./components/Sidebar.vue";
 import TabBar from "./components/TabBar.vue";
 import EditorArea from "./components/EditorArea.vue";
@@ -122,7 +121,6 @@ watch(
 
 <template>
   <div class="app-root">
-    <AppHeader />
     <div class="app-shell">
       <div class="work-area">
         <div class="work-top">

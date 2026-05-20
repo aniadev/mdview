@@ -1,9 +1,17 @@
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount } from "vue";
+import { ref, onMounted, onBeforeUnmount, nextTick } from "vue";
 import { Icon } from "@iconify/vue";
 import { useTabsStore } from "../stores/tabs";
+import { useThemeStore } from "../stores/theme";
+import { useUiStore } from "../stores/ui";
 
 const tabs = useTabsStore();
+const theme = useThemeStore();
+const ui = useUiStore();
+
+const tabListRef = ref<HTMLDivElement | null>(null);
+const showLeftChevron = ref(false);
+const showRightChevron = ref(false);
 
 function onCloseClick(e: MouseEvent, path: string) {
   e.stopPropagation();
@@ -37,21 +45,80 @@ function onWindowClick() {
   if (ctxMenu.value.visible) closeCtxMenu();
 }
 
-onMounted(() => window.addEventListener("click", onWindowClick));
-onBeforeUnmount(() => window.removeEventListener("click", onWindowClick));
+let dragSourceIndex = -1;
+
+function onDragStart(e: DragEvent, index: number) {
+  dragSourceIndex = index;
+  if (e.dataTransfer) {
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", String(index));
+  }
+}
+
+function onDragOver(e: DragEvent) {
+  e.preventDefault();
+  if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
+}
+
+function onDrop(e: DragEvent, index: number) {
+  e.preventDefault();
+  if (dragSourceIndex >= 0 && dragSourceIndex !== index) {
+    tabs.moveTab(dragSourceIndex, index);
+  }
+  dragSourceIndex = -1;
+}
+
+function onDragEnd() {
+  dragSourceIndex = -1;
+}
+
+function checkOverflow() {
+  const el = tabListRef.value;
+  if (!el) return;
+  showRightChevron.value = el.scrollWidth > el.clientWidth + 1;
+  showLeftChevron.value = el.scrollLeft > 1;
+}
+
+function scrollTabs(delta: number) {
+  const el = tabListRef.value;
+  if (!el) return;
+  el.scrollBy({ left: delta, behavior: "smooth" });
+  void nextTick().then(checkOverflow);
+}
+
+onMounted(() => {
+  window.addEventListener("click", onWindowClick);
+  checkOverflow();
+});
+onBeforeUnmount(() => {
+  window.removeEventListener("click", onWindowClick);
+});
 </script>
 
 <template>
   <div class="tab-bar">
-    <div class="tab-list">
+    <button
+      v-show="showLeftChevron"
+      class="chevron-btn"
+      title="Scroll left"
+      @click="scrollTabs(-200)"
+    >
+      <Icon icon="lucide:chevron-left" width="14" height="14" />
+    </button>
+    <div ref="tabListRef" class="tab-list" @scroll="checkOverflow">
       <div
-        v-for="tab in tabs.tabs"
+        v-for="(tab, index) in tabs.tabs"
         :key="tab.path"
         class="tab"
         :class="{ active: tabs.activePath === tab.path }"
         :title="tab.path"
+        draggable="true"
         @click="tabs.setActive(tab.path)"
         @contextmenu="onTabContextMenu($event, tab.path)"
+        @dragstart="onDragStart($event, index)"
+        @dragover="onDragOver"
+        @drop="onDrop($event, index)"
+        @dragend="onDragEnd"
       >
         <span class="tab-name">{{ tab.name }}</span>
         <span class="tab-dirty" v-if="tabs.isDirty(tab)">●</span>
@@ -65,8 +132,27 @@ onBeforeUnmount(() => window.removeEventListener("click", onWindowClick));
         </button>
       </div>
     </div>
+    <button
+      v-show="showRightChevron"
+      class="chevron-btn"
+      title="Scroll right"
+      @click="scrollTabs(200)"
+    >
+      <Icon icon="lucide:chevron-right" width="14" height="14" />
+    </button>
+    <div class="tab-bar-actions">
+      <button
+        class="icon-btn"
+        :title="theme.theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'"
+        @click="theme.toggle()"
+      >
+        <Icon :icon="theme.theme === 'dark' ? 'lucide:sun' : 'lucide:moon'" width="16" height="16" />
+      </button>
+      <button class="icon-btn" title="Settings" @click="ui.openSettings()">
+        <Icon icon="lucide:settings" width="16" height="16" />
+      </button>
+    </div>
   </div>
-
   <Teleport to="body">
     <div
       v-if="ctxMenu.visible"
@@ -113,6 +199,11 @@ onBeforeUnmount(() => window.removeEventListener("click", onWindowClick));
   position: relative;
   min-width: 100px;
   max-width: 200px;
+  transition: opacity 0.15s;
+}
+
+.tab:active {
+  opacity: 0.6;
 }
 
 .tab:hover {
@@ -201,5 +292,31 @@ onBeforeUnmount(() => window.removeEventListener("click", onWindowClick));
 
 .ctx-item:hover {
   background: var(--bg-selected);
+}
+
+.chevron-btn {
+  width: 24px;
+  height: 100%;
+  flex-shrink: 0;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chevron-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
+.tab-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 4px;
+  flex-shrink: 0;
 }
 </style>

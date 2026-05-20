@@ -2,6 +2,29 @@
 
 All notable changes to mdview.
 
+## [1.4.0] — 2026-05-20
+
+### Added
+
+- **Table of Contents (Outline) panel** — interactive hierarchical Table of Contents inside a new "Outline" tab in the sidebar. Displays document outline, tracks current viewport reading position, and supports click-to-navigate for both editor and preview scrolls.
+- **Toggle Word Wrap** — wrap-text button (`lucide:wrap-text`) in the editor toolbar to toggle between horizontal scroll (code focus) and line wrapping (reading/prose focus).
+- **Drag-and-Drop Tab Reordering** — rearrange tabs in the TabBar visually with drag-and-drop support, visual drop indicators, and translucent drag visual effects.
+- **Recent Workspaces list** — persistent listing of up to 10 recently opened folders or `.code-workspace` files displayed in the empty sidebar on launch.
+- **Refresh File Explorer button** — refresh tree contents directly from any workspace root header while preserving expanded/collapsed directories.
+- **AI Agent File recognition** — automatically displays robot icons (`lucide:bot`) with a colored accent for instructions files (`CLAUDE.md`, `AGENTS.md`, `.cursorrules`, etc.).
+- **Scroll Chevrons in TabBar** — left/right chevron navigation buttons to scroll through overflowed tabs in the TabBar, featuring smooth scrolling.
+- **Print / PDF Export** — standalone printing / PDF export shortcut (`lucide:printer`) in the Preview toolbar using custom `@media print` stylesheets that hide all app chrome.
+- **Tailwind CSS v4 Integration** — integrated Tailwind CSS v4 in the project layout configuration via `@tailwindcss/vite` plugin.
+
+### Changed
+
+- **App Header cleaned up** — removed the 32px standalone header. TabBar now integrates theme and settings triggers at the right margin, yielding more vertical screen space for writing.
+- **Activity Bar merged into Explorer header** — Sidebar/Outline and Terminal visibility controls moved into a unified `.sidebar-activity-row` directly below the explorer header.
+
+### Fixed
+
+- **Drift-free scroll sync** — replaced the naive window percentage formula with a robust heading-segment scroll sync algorithm. Codespace positions in CodeMirror 6 and HTML Preview are mapped relative to headings (`h1`–`h6`), completely eliminating alignment jumps on complex files. Falls back to percentage sync on raw-text files.
+
 ## [1.3.0] — 2026-05-19
 
 ### Added

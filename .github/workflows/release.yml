@@ -117,6 +117,51 @@ jobs:
           prerelease: false
           args: ${{ matrix.args }}
 
+      - name: Sign and upload updater sig (macOS)
+        if: matrix.target == 'universal-apple-darwin'
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          TAG: ${{ needs.create-release.outputs.tag }}
+        run: |
+          mkdir -p /tmp/updater-sig
+          gh release download "$TAG" \
+            --repo "${{ github.repository }}" \
+            --pattern "mdview_universal.app.tar.gz" \
+            -D /tmp/updater-sig
+          pnpm tauri signer sign /tmp/updater-sig/mdview_universal.app.tar.gz
+          gh release upload "$TAG" \
+            "/tmp/updater-sig/mdview_universal.app.tar.gz.sig" \
+            --repo "${{ github.repository }}" \
+            --clobber
+
+      - name: Sign and upload updater sig (Windows)
+        if: matrix.target == 'x86_64-pc-windows-msvc'
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          TAG: ${{ needs.create-release.outputs.tag }}
+        run: |
+          NSIS=$(gh release view "$TAG" \
+            --repo "${{ github.repository }}" \
+            --json assets \
+            -q '[.assets[].name] | .[] | select(test("nsis\\.zip$"))' | head -1)
+          if [ -z "$NSIS" ]; then echo "No NSIS asset found, skipping"; exit 0; fi
+          mkdir -p /tmp/updater-sig
+          gh release download "$TAG" \
+            --repo "${{ github.repository }}" \
+            --pattern "$NSIS" \
+            -D /tmp/updater-sig
+          pnpm tauri signer sign "/tmp/updater-sig/$NSIS"
+          gh release upload "$TAG" \
+            "/tmp/updater-sig/${NSIS}.sig" \
+            --repo "${{ github.repository }}" \
+            --clobber
+
   update-manifest:
     name: Update download/latest.json
     needs: [create-release, build]

@@ -146,19 +146,20 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
           TAG: ${{ needs.create-release.outputs.tag }}
         run: |
-          NSIS=$(gh release view "$TAG" \
+          EXE=$(gh release view "$TAG" \
             --repo "${{ github.repository }}" \
             --json assets \
-            -q '[.assets[].name] | .[] | select(test("nsis\\.zip$"))' | head -1)
-          if [ -z "$NSIS" ]; then echo "No NSIS asset found, skipping"; exit 0; fi
-          mkdir -p /tmp/updater-sig
+            -q '[.assets[].name] | .[] | select(test("x64-setup\\.exe$"))' | head -1)
+          if [ -z "$EXE" ]; then echo "No NSIS exe asset found, skipping"; exit 0; fi
+          DEST="$RUNNER_TEMP/updater-sig"
+          mkdir -p "$DEST"
           gh release download "$TAG" \
             --repo "${{ github.repository }}" \
-            --pattern "$NSIS" \
-            -D /tmp/updater-sig
-          pnpm tauri signer sign "/tmp/updater-sig/$NSIS"
+            --pattern "$EXE" \
+            -D "$DEST"
+          pnpm tauri signer sign "$DEST/$EXE"
           gh release upload "$TAG" \
-            "/tmp/updater-sig/${NSIS}.sig" \
+            "$DEST/${EXE}.sig" \
             --repo "${{ github.repository }}" \
             --clobber
 
@@ -203,7 +204,7 @@ jobs:
             echo "WARNING: macOS .sig not found — skipping darwin-universal"
           fi
 
-          WIN_NAME=$(get_name 'nsis\.zip\.sig$')
+          WIN_NAME=$(get_name 'x64-setup\.exe\.sig$')
           if [ -n "$WIN_NAME" ]; then
             WIN_SIG=$(curl -fsL "${BASE_URL}/${WIN_NAME}")
             PLATFORMS=$(jq -n \

@@ -1,6 +1,6 @@
 [package]
 name = "mdview"
-version = "1.4.0"
+version = "1.4.1"
 description = "Focused desktop editor for Markdown files inside a project folder. Tauri-based, dark+light themes, GFM + math + Mermaid."
 authors = ["mdview"]
 license = "MIT"

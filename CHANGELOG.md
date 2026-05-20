@@ -2,6 +2,13 @@
 
 All notable changes to mdview.
 
+## [1.4.1] — 2026-05-20
+
+### Fixed
+
+- **Release filename alignment** — corrected version configurations in `package.json`, `Cargo.toml`, and `tauri.conf.json` so release build bundles are cleanly named with the correct version number.
+- **Robust Updater Fallback** — resolved the `"Could not fetch a valid release JSON from the remote"` error thrown by Tauri when no `latest.json` exists. Added a case-insensitive GitHub API fallback check. It fetches version metadata directly from the GitHub releases API, tells the user if they have the latest version, and provides a `"Go to Download Page"` button to easily download newer releases.
+
 ## [1.4.0] — 2026-05-20
 
 ### Added

@@ -2,6 +2,8 @@ import { defineStore } from "pinia";
 import { ref, computed } from "vue";
 import { check, type Update } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
+import { getVersion } from "@tauri-apps/api/app";
+import { openUrl } from "@tauri-apps/plugin-opener";
 
 export type UpdaterState =
   | "idle"
@@ -41,25 +43,90 @@ export const useUpdaterStore = defineStore("updater", () => {
     state.value = "checking";
     errorMsg.value = null;
     try {
-      const upd = await check();
-      if (!upd) {
-        state.value = "no-update";
-        if (!opts.silent) showToast("mdview is up to date");
-        return;
+      try {
+        const upd = await check();
+        if (upd) {
+          update.value = upd;
+          state.value = "available";
+          modalOpen.value = true;
+          return;
+        } else {
+          state.value = "no-update";
+          if (!opts.silent) showToast("mdview is up to date");
+          return;
+        }
+      } catch (tauriError) {
+        console.warn("Tauri updater check failed, trying GitHub API fallback", tauriError);
+        
+        // Try manual fallback via GitHub API
+        const res = await fetch("https://api.github.com/repos/aniadev/mdview/releases/latest");
+        if (!res.ok) {
+          throw tauriError; // If GitHub API also fails, throw original tauri error
+        }
+        
+        const data = await res.json();
+        const latestTag = data.tag_name;
+        if (!latestTag) {
+          throw tauriError;
+        }
+        
+        const latestVersion = latestTag.replace(/^v/, "");
+        const currentVersion = await getVersion();
+        
+        if (latestVersion === currentVersion) {
+          state.value = "no-update";
+          if (!opts.silent) showToast("mdview is up to date");
+          return;
+        } else {
+          // Mock update object for manual installation
+          update.value = {
+            version: latestVersion,
+            currentVersion: currentVersion,
+            body: data.body || "",
+            isManual: true,
+          } as any;
+          state.value = "available";
+          modalOpen.value = true;
+          return;
+        }
       }
-      update.value = upd;
-      state.value = "available";
-      modalOpen.value = true;
     } catch (e) {
       console.error("update check failed", e);
-      errorMsg.value = String(e);
+      let msg = String(e);
+      const isNoRelease = msg.toLowerCase().includes("could not fetch a valid release json");
+      if (isNoRelease) {
+        msg = "No release information found on the update server. The release might not be published yet.";
+      }
+      errorMsg.value = msg;
       state.value = "error";
-      if (!opts.silent) showToast(`Update check failed`);
+      if (!opts.silent) {
+        if (isNoRelease) {
+          showToast("No release found on update server");
+        } else {
+          showToast(`Update check failed`);
+        }
+      }
     }
   }
 
   async function startInstall() {
     if (!update.value) return;
+    
+    // Manual fallback update
+    if ((update.value as any).isManual) {
+      try {
+        await openUrl("https://github.com/aniadev/mdview/releases/latest");
+        modalOpen.value = false;
+        state.value = "idle";
+        update.value = null;
+      } catch (e) {
+        console.error("Failed to open manual update URL", e);
+        errorMsg.value = "Failed to open download page. Please visit https://github.com/aniadev/mdview/releases";
+        state.value = "error";
+      }
+      return;
+    }
+
     state.value = "downloading";
     downloadedBytes.value = 0;
     totalBytes.value = 0;

@@ -90,7 +90,7 @@ function formatBytes(n: number): string {
           <template v-else>
             <button @click="updater.closeModal()">Later</button>
             <button class="primary" @click="updater.startInstall()">
-              Install &amp; Restart
+              {{ (updater.update as any)?.isManual ? 'Go to Download Page' : 'Install & Restart' }}
             </button>
           </template>
         </footer>

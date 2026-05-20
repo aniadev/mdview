@@ -2,6 +2,21 @@
 
 All notable changes to mdview.
 
+## [1.5.0] — 2026-05-20
+
+### Added
+
+- **Multi-select & Bulk Clipboard in Explorer** — select multiple files using `Cmd+Click` / `Ctrl+Click`. Bulk copy (`Cmd+C`) loads multiple paths, paste triggers sequential file operations (continuing on individual errors) with visual toast confirmation.
+- **Copy/Paste Files and Folders** — duplicate or move files and directory structures recursively across workspace roots. Automatically resolves path conflicts by appending `-copy` suffix.
+- **Vietnamese Language Support (i18n)** — lightweight reactive localization helper for English and Tiếng Việt. Unified all components, templates, and dialog inputs under dynamic `t()` rendering with localized setting persistence.
+- **First-Run Tour Guide** — 9-step introduction overlay featuring custom spotlight masks and responsive tooltip cards.
+- **Cmd+J Terminal Shortcut** — secondary shortcut binding to toggle the integrated Bottom Panel.
+- **In-App Toast System** — lightweight transient toast overlays for non-blocking notification delivery.
+
+### Fixed
+
+- **Robust PDF Export pipeline** — replaced unstable webview `window.print()` with standalone HTML exporter, injecting printable CSS (breaks/margins/light-theme Mermaid diagrams) and auto-spawning browser print dialog.
+
 ## [1.4.1] — 2026-05-20
 
 ### Fixed

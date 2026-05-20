@@ -115,5 +115,77 @@ jobs:
             See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for the full release notes.
           releaseDraft: false
           prerelease: false
-          updaterJsonKeepUniversal: ${{ matrix.target == 'universal-apple-darwin' }}
           args: ${{ matrix.args }}
+
+  update-manifest:
+    name: Update download/latest.json
+    needs: [create-release, build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate download/latest.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.create-release.outputs.tag }}
+        run: |
+          set -euo pipefail
+          VERSION="${TAG#v}"
+          PUB_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+          NOTES=$(gh release view "$TAG" --repo "${{ github.repository }}" --json body -q '.body // ""')
+          ASSETS=$(gh release view "$TAG" --repo "${{ github.repository }}" --json assets -q '[.assets[].browser_download_url]')
+
+          get_asset() { echo "$ASSETS" | jq -r --arg p "$1" '.[] | select(test($p)) | .' | head -1; }
+
+          MAC_SIG_URL=$(get_asset '_universal\\.app\\.tar\\.gz\\.sig$')
+          WIN_SIG_URL=$(get_asset 'x64-setup\\.nsis\\.zip\\.sig$')
+
+          PLATFORMS="{}"
+
+          if [ -n "$MAC_SIG_URL" ]; then
+            MAC_URL="${MAC_SIG_URL%.sig}"
+            MAC_SIG=$(curl -fsL "$MAC_SIG_URL")
+            PLATFORMS=$(jq -n \
+              --arg u "$MAC_URL" --arg s "$MAC_SIG" --argjson p "$PLATFORMS" \
+              '$p + {"darwin-universal":{"signature":$s,"url":$u}}')
+          else
+            echo "WARNING: macOS .sig not found — skipping darwin-universal"
+          fi
+
+          if [ -n "$WIN_SIG_URL" ]; then
+            WIN_URL="${WIN_SIG_URL%.sig}"
+            WIN_SIG=$(curl -fsL "$WIN_SIG_URL")
+            PLATFORMS=$(jq -n \
+              --arg u "$WIN_URL" --arg s "$WIN_SIG" --argjson p "$PLATFORMS" \
+              '$p + {"windows-x86_64":{"signature":$s,"url":$u}}')
+          else
+            echo "WARNING: Windows .sig not found — skipping windows-x86_64"
+          fi
+
+          mkdir -p download
+          jq -n \
+            --arg v "$VERSION" \
+            --arg n "$NOTES" \
+            --arg d "$PUB_DATE" \
+            --argjson pl "$PLATFORMS" \
+            '{version:$v,notes:$n,pub_date:$d,platforms:$pl}' \
+            > download/latest.json
+
+          echo "Generated download/latest.json:"
+          cat download/latest.json
+
+      - name: Commit and push
+        env:
+          TAG: ${{ needs.create-release.outputs.tag }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add download/latest.json
+          git diff --cached --quiet && echo "No changes to commit" && exit 0
+          git commit -m "chore: update latest.json for ${TAG}"
+          git push

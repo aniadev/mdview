@@ -79,8 +79,8 @@
     "updater": {
       "active": true,
       "dialog": false,
-      "endpoints": ["https://github.com/aniadev/mdview/releases/latest/download/latest.json"],
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDdDMzRENUMyMTFCNDdDQUEKUldTcWZMUVJ3dFUwZk5YbURUekxhRnhyaHpJb0JKZlFaQ2JQYnFCNW9YNGRKckRtaXNCSUhQY3AK"
+      "endpoints": ["https://raw.githubusercontent.com/aniadev/mdview/main/download/latest.json"],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEZGMjA0MkUxQzY0NkI3MzkKUldRNXQwYkc0VUlnL3dIeXhDbVNDTVoydHRqT0JaZi9tSDZqdE92VThzZGUvMnIyMG5vUEhvT2kK"
     }
   }
 }

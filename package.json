@@ -28,8 +28,10 @@
     "tauri:build": "tauri build",
     "tauri:build:mac": "tauri build --bundles app,dmg",
     "tauri:build:mac-universal": "tauri build --target universal-apple-darwin --bundles app,dmg",
-    "tauri:build:win": "tauri build --target x86_64-pc-windows-msvc --bundles nsis,msi",
-    "tauri:build:win-arm": "tauri build --target aarch64-pc-windows-msvc --bundles nsis,msi",
+    "tauri:build:win": "tauri build --target x86_64-pc-windows-msvc --bundles nsis,msi,msix",
+    "tauri:build:win-arm": "tauri build --target aarch64-pc-windows-msvc --bundles nsis,msi,msix",
+    "tauri:build:win-msix": "tauri build --target x86_64-pc-windows-msvc --bundles msix",
+    "tauri:build:win-arm-msix": "tauri build --target aarch64-pc-windows-msvc --bundles msix",
     "tauri:build:linux": "tauri build --target x86_64-unknown-linux-gnu --bundles appimage,deb",
     "icons": "tauri icon public/mdview.png",
     "typecheck": "vue-tsc --noEmit"

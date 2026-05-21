@@ -16,6 +16,7 @@ export interface Tab {
 export const useTabsStore = defineStore("tabs", () => {
   const tabs = ref<Tab[]>([]);
   const activePath = ref<string | null>(null);
+  const recentPaths = ref<string[]>([]);
 
   const activeTab = computed(() =>
     tabs.value.find((t) => t.path === activePath.value) ?? null
@@ -30,6 +31,11 @@ export const useTabsStore = defineStore("tabs", () => {
   );
 
   async function openFile(path: string, name: string) {
+    const rIdx = recentPaths.value.indexOf(path);
+    if (rIdx !== -1) recentPaths.value.splice(rIdx, 1);
+    recentPaths.value.unshift(path);
+    if (recentPaths.value.length > 20) recentPaths.value.pop();
+
     const existing = tabs.value.find((t) => t.path === path);
     if (existing) {
       activePath.value = path;
@@ -151,6 +157,7 @@ export const useTabsStore = defineStore("tabs", () => {
     tabs,
     activePath,
     activeTab,
+    recentPaths,
     activeDirty,
     isDirty,
     openFile,

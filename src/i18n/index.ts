@@ -115,8 +115,11 @@ const messages: Record<string, { en: string; vi: string }> = {
   'update.close': { en: 'Close', vi: 'Đóng' },
 
   // --- Command palette ---
-  'palette.placeholder': { en: 'Search files by name…', vi: 'Tìm file theo tên…' },
+  'palette.placeholder': { en: 'Search files… or # for headings', vi: 'Tìm file… hoặc # để tìm tiêu đề' },
   'palette.noMatches': { en: 'No matches.', vi: 'Không tìm thấy.' },
+  'palette.recent': { en: 'Recent', vi: 'Gần đây' },
+  'palette.headings': { en: 'Headings', vi: 'Tiêu đề' },
+  'palette.noHeadings': { en: 'No headings found', vi: 'Không tìm thấy tiêu đề' },
 
   // --- Input placeholders ---
   'input.filename': { en: 'filename.md', vi: 'ten-file.md' },

@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, watch, nextTick } from "vue";
-import { usePaletteStore } from "../stores/palette";
+import { ref, computed, watch, nextTick } from "vue";
+import { usePaletteStore, type MdFile } from "../stores/palette";
 import { useTabsStore } from "../stores/tabs";
 import { useI18n } from "../i18n";
 
@@ -10,6 +10,50 @@ const palette = usePaletteStore();
 const tabs = useTabsStore();
 
 const input = ref<HTMLInputElement | null>(null);
+
+interface HeadingHit {
+  fileName: string;
+  filePath: string;
+  headingText: string;
+  level: number;
+}
+
+const recentItems = computed<MdFile[]>(() => {
+  if (palette.isHeadingMode || palette.query.trim()) return [];
+  return tabs.recentPaths
+    .slice(0, 5)
+    .map((p) => palette.files.find((f) => f.path === p))
+    .filter((f): f is MdFile => f !== undefined);
+});
+
+const headingItems = computed<HeadingHit[]>(() => {
+  if (!palette.isHeadingMode) return [];
+  const q = palette.query.trimStart().slice(1).trim().toLowerCase();
+  const hits: HeadingHit[] = [];
+  const re = /^(#{1,6})\s+(.+)/gm;
+  for (const tab of tabs.tabs) {
+    if (!tab.content) continue;
+    re.lastIndex = 0;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(tab.content)) !== null) {
+      const text = m[2].trim();
+      if (!q || text.toLowerCase().includes(q)) {
+        hits.push({ fileName: tab.name, filePath: tab.path, headingText: text, level: m[1].length });
+      }
+    }
+  }
+  return hits;
+});
+
+const activeItems = computed<MdFile[] | HeadingHit[]>(() => {
+  if (palette.isHeadingMode) return headingItems.value;
+  if (!palette.query.trim() && recentItems.value.length > 0) return recentItems.value;
+  return palette.results;
+});
+
+const showRecent = computed(
+  () => !palette.isHeadingMode && !palette.query.trim() && recentItems.value.length > 0
+);
 
 watch(
   () => palette.isOpen,
@@ -28,10 +72,10 @@ function onKeydown(e: KeyboardEvent) {
     palette.close();
   } else if (e.key === "ArrowDown") {
     e.preventDefault();
-    palette.moveSelection(1);
+    palette.moveSelection(1, activeItems.value.length);
   } else if (e.key === "ArrowUp") {
     e.preventDefault();
-    palette.moveSelection(-1);
+    palette.moveSelection(-1, activeItems.value.length);
   } else if (e.key === "Enter") {
     e.preventDefault();
     pick(palette.selectedIndex);
@@ -39,9 +83,15 @@ function onKeydown(e: KeyboardEvent) {
 }
 
 function pick(idx: number) {
-  const item = palette.results[idx];
-  if (!item) return;
-  tabs.openFile(item.path, item.name);
+  if (palette.isHeadingMode) {
+    const item = (activeItems.value as HeadingHit[])[idx];
+    if (!item) return;
+    tabs.openFile(item.filePath, item.fileName);
+  } else {
+    const item = (activeItems.value as MdFile[])[idx];
+    if (!item) return;
+    tabs.openFile(item.path, item.name);
+  }
   palette.close();
 }
 
@@ -66,20 +116,44 @@ function onBackdropClick() {
         :placeholder="t('palette.placeholder')"
         spellcheck="false"
       />
-      <ul class="palette-results" v-if="palette.results.length > 0">
-        <li
-          v-for="(r, i) in palette.results"
-          :key="r.path"
-          class="palette-item"
-          :class="{ selected: i === palette.selectedIndex }"
-          @click="pick(i)"
-          @mouseenter="palette.selectedIndex = i"
-        >
-          <span class="palette-name">{{ r.name }}</span>
-          <span class="palette-path">{{ r.rel_path }}</span>
-        </li>
-      </ul>
-      <div v-else class="palette-empty">{{ t('palette.noMatches') }}</div>
+
+      <!-- Heading mode -->
+      <template v-if="palette.isHeadingMode">
+        <div class="palette-section-label">{{ t('palette.headings') }}</div>
+        <ul v-if="headingItems.length > 0" class="palette-results">
+          <li
+            v-for="(r, i) in headingItems"
+            :key="r.filePath + r.headingText + i"
+            class="palette-item"
+            :class="{ selected: i === palette.selectedIndex }"
+            @click="pick(i)"
+            @mouseenter="palette.selectedIndex = i"
+          >
+            <span class="palette-name">{{ r.headingText }}</span>
+            <span class="palette-path">{{ r.fileName }}</span>
+          </li>
+        </ul>
+        <div v-else class="palette-empty">{{ t('palette.noHeadings') }}</div>
+      </template>
+
+      <!-- Recent / normal mode -->
+      <template v-else>
+        <div v-if="showRecent" class="palette-section-label">{{ t('palette.recent') }}</div>
+        <ul v-if="(activeItems as MdFile[]).length > 0" class="palette-results">
+          <li
+            v-for="(r, i) in (activeItems as MdFile[])"
+            :key="r.path"
+            class="palette-item"
+            :class="{ selected: i === palette.selectedIndex }"
+            @click="pick(i)"
+            @mouseenter="palette.selectedIndex = i"
+          >
+            <span class="palette-name">{{ r.name }}</span>
+            <span class="palette-path">{{ r.rel_path }}</span>
+          </li>
+        </ul>
+        <div v-else class="palette-empty">{{ t('palette.noMatches') }}</div>
+      </template>
     </div>
   </div>
 </template>
@@ -119,6 +193,16 @@ function onBackdropClick() {
   font-family: var(--font-ui);
   font-size: 14px;
   outline: none;
+}
+
+.palette-section-label {
+  padding: 4px 14px 2px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
 }
 
 .palette-results {

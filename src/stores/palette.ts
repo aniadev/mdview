@@ -58,6 +58,8 @@ export const usePaletteStore = defineStore("palette", () => {
     }
   }
 
+  const isHeadingMode = computed(() => query.value.trimStart().startsWith('#'));
+
   const results = computed<MdFile[]>(() => {
     const q = query.value.trim();
     if (!q) return files.value.slice(0, 20);
@@ -76,8 +78,8 @@ export const usePaletteStore = defineStore("palette", () => {
     isOpen.value = false;
   }
 
-  function moveSelection(delta: number) {
-    const max = results.value.length;
+  function moveSelection(delta: number, total?: number) {
+    const max = total ?? results.value.length;
     if (max === 0) return;
     selectedIndex.value = (selectedIndex.value + delta + max) % max;
   }
@@ -91,6 +93,8 @@ export const usePaletteStore = defineStore("palette", () => {
     isOpen,
     query,
     selectedIndex,
+    files,
+    isHeadingMode,
     results,
     open,
     close,

@@ -3,9 +3,12 @@ import { ref, onMounted, computed } from "vue";
 import { Icon } from "@iconify/vue";
 import { getVersion } from "@tauri-apps/api/app";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import { load } from "@tauri-apps/plugin-store";
+import { open } from "@tauri-apps/plugin-dialog";
 import { useUiStore } from "../stores/ui";
 import { useUpdaterStore } from "../stores/updater";
 import { useI18n } from "../i18n";
+import Button from "./ui/Button.vue";
 
 const ui = useUiStore();
 const updater = useUpdaterStore();
@@ -28,11 +31,48 @@ async function openRepo() {
   }
 }
 
+const dailyNotesFolder = ref("");
+
+async function saveDailyNotesFolder() {
+  try {
+    const store = await load("mdview-settings.json", { autoSave: true, defaults: {} });
+    await store.set("daily_notes_folder", dailyNotesFolder.value.trim());
+    await store.save();
+  } catch (e) {
+    console.error("saveDailyNotesFolder failed", e);
+  }
+}
+
+async function browseDailyNotesFolder() {
+  try {
+    const selected = await open({
+      directory: true,
+      multiple: false,
+      title: t("settings.dailyNotesFolder"),
+    });
+    if (selected && typeof selected === "string") {
+      dailyNotesFolder.value = selected;
+      await saveDailyNotesFolder();
+    }
+  } catch (e) {
+    console.error("browseDailyNotesFolder failed", e);
+  }
+}
+
 onMounted(async () => {
   try {
     appVersion.value = await getVersion();
   } catch (e) {
     console.error("getVersion failed", e);
+  }
+  try {
+    const store = await load("mdview-settings.json", { autoSave: true, defaults: {} });
+    const saved = await store.get<string>("daily_notes_folder");
+    if (saved) {
+      dailyNotesFolder.value = saved;
+    }
+  } catch (e) {
+    console.error("load settings failed", e);
   }
 });
 
@@ -55,6 +95,10 @@ const updateStatusText = computed(() => {
   }
 });
 
+const isCheckingOrDownloading = computed(() => {
+  return updater.state === "checking" || updater.state === "downloading";
+});
+
 function onCheck() {
   void updater.checkForUpdates({ silent: false });
 }
@@ -66,71 +110,134 @@ function onClose() {
 
 <template>
   <Teleport to="body">
-    <div v-if="ui.settingsOpen" class="settings-overlay" @click="onClose">
-      <div class="settings-modal" @click.stop>
-        <header class="settings-header">
-          <h2 class="settings-title">{{ t('settings.title') }}</h2>
-          <button class="icon-btn" :title="t('settings.close')" @click="onClose"><Icon icon="lucide:x" width="16" height="16" /></button>
+    <div
+      v-if="ui.settingsOpen"
+      class="settings-overlay fixed inset-0 bg-black/45 flex items-center justify-center z-[180] p-6"
+      @click="onClose"
+    >
+      <div
+        class="settings-modal w-[540px] max-w-full max-h-[80vh] bg-sidebar border border-border rounded-md shadow-2xl flex flex-col overflow-hidden"
+        @click.stop
+      >
+        <header class="settings-header flex items-center justify-between px-5 py-3.5 border-b border-border">
+          <h2 class="settings-title m-0 text-sm font-semibold text-text tracking-wide">{{ t('settings.title') }}</h2>
+          <Button
+            variant="ghost"
+            size="icon"
+            :title="t('settings.close')"
+            @click="onClose"
+          >
+            <Icon icon="lucide:x" width="16" height="16" />
+          </Button>
         </header>
 
-        <div class="settings-body">
-          <section class="settings-section">
-            <h3 class="settings-section-title">{{ t('settings.about') }}</h3>
-            <div class="settings-row">
-              <span class="settings-label">{{ t('settings.version') }}</span>
-              <span class="settings-value">v{{ appVersion || '…' }}</span>
+        <div class="settings-body flex-1 overflow-y-auto py-2">
+          <!-- About Section -->
+          <section class="settings-section px-5 py-3.5 border-b border-border last:border-b-0">
+            <h3 class="settings-section-title m-0 mb-2.5 text-[11px] uppercase tracking-wider text-text-muted font-semibold">
+              {{ t('settings.about') }}
+            </h3>
+            <div class="settings-row flex items-center justify-between gap-4 py-1.5 text-sm">
+              <span class="settings-label text-text font-medium">{{ t('settings.version') }}</span>
+              <span class="settings-value text-text-muted font-mono text-xs">v{{ appVersion || '…' }}</span>
             </div>
-            <div class="settings-row">
-              <span class="settings-label">{{ t('settings.author') }}</span>
-              <span class="settings-value">aniadev</span>
+            <div class="settings-row flex items-center justify-between gap-4 py-1.5 text-sm">
+              <span class="settings-label text-text font-medium">{{ t('settings.author') }}</span>
+              <span class="settings-value text-text-muted font-mono text-xs">aniadev</span>
             </div>
-            <div class="settings-row">
-              <span class="settings-label">{{ t('settings.license') }}</span>
-              <span class="settings-value">MIT</span>
+            <div class="settings-row flex items-center justify-between gap-4 py-1.5 text-sm">
+              <span class="settings-label text-text font-medium">{{ t('settings.license') }}</span>
+              <span class="settings-value text-text-muted font-mono text-xs">MIT</span>
             </div>
-            <div class="settings-row">
-              <span class="settings-label">{{ t('settings.github') }}</span>
-              <a class="settings-link" @click.prevent="openRepo" :href="REPO_URL">
+            <div class="settings-row flex items-center justify-between gap-4 py-1.5 text-sm">
+              <span class="settings-label text-text font-medium">{{ t('settings.github') }}</span>
+              <a
+                class="settings-link text-accent text-xs no-underline cursor-pointer hover:underline transition-all duration-150"
+                @click.prevent="openRepo"
+                :href="REPO_URL"
+              >
                 aniadev/mdview
               </a>
             </div>
           </section>
 
-          <section class="settings-section">
-            <h3 class="settings-section-title">{{ t('settings.language') }}</h3>
-            <div class="settings-row">
-              <span class="settings-label">{{ t('settings.language') }}</span>
-              <select v-model="selectedLocale" class="settings-select" @change="changeLocale">
+          <!-- Language Section -->
+          <section class="settings-section px-5 py-3.5 border-b border-border last:border-b-0">
+            <h3 class="settings-section-title m-0 mb-2.5 text-[11px] uppercase tracking-wider text-text-muted font-semibold">
+              {{ t('settings.language') }}
+            </h3>
+            <div class="settings-row flex items-center justify-between gap-4 py-1.5 text-sm">
+              <span class="settings-label text-text font-medium">{{ t('settings.language') }}</span>
+              <select
+                v-model="selectedLocale"
+                class="settings-select bg-app border border-border rounded px-2 py-1 text-xs text-text cursor-pointer outline-none focus:border-accent transition-colors duration-150"
+                @change="changeLocale"
+              >
                 <option value="en">{{ t('settings.langEn') }}</option>
                 <option value="vi">{{ t('settings.langVi') }}</option>
               </select>
             </div>
           </section>
 
-          <section class="settings-section">
-            <h3 class="settings-section-title">{{ t('settings.updates') }}</h3>
-            <div class="settings-row">
-              <div class="settings-row-main">
-                <div class="settings-label">{{ t('settings.checkUpdate') }}</div>
+          <!-- Daily Notes Section -->
+          <section class="settings-section px-5 py-3.5 border-b border-border last:border-b-0">
+            <h3 class="settings-section-title m-0 mb-2.5 text-[11px] uppercase tracking-wider text-text-muted font-semibold">
+              {{ t('settings.dailyNotesHeader') }}
+            </h3>
+            <div class="settings-row flex flex-col items-start gap-2 py-1.5 text-sm">
+              <span class="settings-label text-text font-medium">{{ t('settings.dailyNotesFolder') }}</span>
+              <div class="settings-row-input flex items-center gap-2 w-full">
+                <input
+                  v-model="dailyNotesFolder"
+                  type="text"
+                  class="settings-input bg-app border border-border rounded px-2 py-[5px] text-xs text-text outline-none flex-1 focus:border-accent transition-all duration-150"
+                  :placeholder="t('settings.dailyNotesFolderDesc')"
+                  @change="saveDailyNotesFolder"
+                />
+                <Button
+                  variant="default"
+                  size="icon"
+                  @click="browseDailyNotesFolder"
+                >
+                  <Icon icon="lucide:folder-open" width="14" height="14" />
+                </Button>
+              </div>
+              <div class="settings-help mt-0.5 text-[11px] text-text-muted">
+                {{ t('settings.dailyNotesFolderDesc') }}
+              </div>
+            </div>
+          </section>
+
+          <!-- Updates Section -->
+          <section class="settings-section px-5 py-3.5 border-b border-border last:border-b-0">
+            <h3 class="settings-section-title m-0 mb-2.5 text-[11px] uppercase tracking-wider text-text-muted font-semibold">
+              {{ t('settings.updates') }}
+            </h3>
+            <div class="settings-row flex items-center justify-between gap-4 py-1.5 text-sm">
+              <div class="settings-row-main flex-1 min-w-0">
+                <div class="settings-label text-text font-medium">{{ t('settings.checkUpdate') }}</div>
                 <div
                   v-if="updateStatusText"
-                  class="settings-help"
-                  :class="{ error: updater.state === 'error' }"
+                  class="settings-help mt-0.5 text-[11px]"
+                  :class="updater.state === 'error' ? 'text-danger' : 'text-text-muted'"
                 >
                   {{ updateStatusText }}
                 </div>
-                <div v-else class="settings-help">
+                <div v-else class="settings-help mt-0.5 text-[11px] text-text-muted">
                   {{ t('settings.autoCheck') }}
                 </div>
               </div>
-              <button
-                class="primary"
-                :disabled="updater.state === 'checking' || updater.state === 'downloading'"
+              <Button
+                variant="default"
+                :disabled="isCheckingOrDownloading"
                 @click="onCheck"
               >
-                <span v-if="updater.state === 'checking'" class="spinner"></span>
+                <span
+                  v-if="updater.state === 'checking'"
+                  class="w-3 h-3 rounded-full border-2 border-border border-t-accent animate-spin inline-block mr-1"
+                ></span>
                 <span v-else>{{ t('settings.checkNow') }}</span>
-              </button>
+              </Button>
             </div>
           </section>
         </div>
@@ -139,129 +246,23 @@ function onClose() {
   </Teleport>
 </template>
 
-<style>
-.settings-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.45);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 180;
-  padding: 24px;
-}
-
-.settings-modal {
-  width: 540px;
-  max-width: 100%;
-  max-height: 80vh;
-  background: var(--bg-sidebar);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.settings-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 20px;
-  border-bottom: 1px solid var(--border);
-}
-
-.settings-title {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text);
-  letter-spacing: 0.2px;
-}
-
+<style lang="scss" scoped>
 .settings-body {
-  flex: 1;
-  overflow-y: auto;
-  padding: 8px 0;
-}
+  &::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 3px;
+    transition: background-color 0.15s;
 
-.settings-section {
-  padding: 14px 20px;
-  border-bottom: 1px solid var(--border);
-}
-
-.settings-section:last-child {
-  border-bottom: none;
-}
-
-.settings-section-title {
-  margin: 0 0 10px 0;
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--text-muted);
-  font-weight: 600;
-}
-
-.settings-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 6px 0;
-  font-size: 13px;
-}
-
-.settings-row-main {
-  flex: 1;
-  min-width: 0;
-}
-
-.settings-label {
-  color: var(--text);
-  font-weight: 500;
-}
-
-.settings-value {
-  color: var(--text-muted);
-  font-family: var(--font-mono);
-  font-size: 12px;
-}
-
-.settings-help {
-  margin-top: 2px;
-  font-size: 11px;
-  color: var(--text-muted);
-}
-
-.settings-help.error {
-  color: var(--danger);
-}
-
-.settings-link {
-  color: var(--accent);
-  font-size: 12px;
-  text-decoration: none;
-  cursor: pointer;
-}
-
-.settings-link:hover {
-  text-decoration: underline;
-}
-
-.settings-select {
-  background: var(--bg-app);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  color: var(--text);
-  font-size: 12px;
-  padding: 4px 8px;
-  cursor: pointer;
-  outline: none;
-}
-
-.settings-select:focus {
-  border-color: var(--accent);
+    &:hover {
+      background: var(--text-muted);
+    }
+  }
 }
 </style>

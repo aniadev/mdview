@@ -4,11 +4,13 @@ import { Icon } from '@iconify/vue';
 import { useTabsStore } from '../stores/tabs';
 import { useThemeStore } from '../stores/theme';
 import { useUiStore } from '../stores/ui';
+import { useWorkspaceStore } from '../stores/workspace';
 import { useI18n } from '../i18n';
 
 const tabs = useTabsStore();
 const theme = useThemeStore();
 const ui = useUiStore();
+const workspace = useWorkspaceStore();
 const { t } = useI18n();
 
 const tabListRef = ref<HTMLDivElement | null>(null);
@@ -143,12 +145,17 @@ onBeforeUnmount(() => {
       <Icon icon="lucide:chevron-right" width="14" height="14" />
     </button>
     <div class="tab-bar-actions">
-      <button class="icon-btn" :title="t('sidebar.collapse')" @click="ui.toggleSidebar()">
+      <!-- icon-btn → Tailwind ghost icon button -->
+      <button
+        class="w-[22px] h-[22px] p-0 border-0 rounded inline-flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text)] cursor-pointer"
+        :title="t('sidebar.collapse')"
+        @click="ui.toggleSidebar()"
+      >
         <Icon v-if="ui.sidebarVisible" icon="lucide:panel-left" width="16" height="16" />
         <Icon v-else icon="lucide:panel-left-open" width="16" height="16" />
       </button>
       <button
-        class="icon-btn"
+        class="w-[22px] h-[22px] p-0 border-0 rounded inline-flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text)] cursor-pointer"
         :title="theme.theme === 'dark' ? t('theme.light') : t('theme.dark')"
         @click="theme.toggle()"
       >
@@ -158,7 +165,18 @@ onBeforeUnmount(() => {
           height="16"
         />
       </button>
-      <button class="icon-btn" :title="t('settings.title')" @click="ui.openSettings()">
+      <button
+        class="w-[22px] h-[22px] p-0 border-0 rounded inline-flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text)] cursor-pointer"
+        :title="t('settings.dailyNotesHeader')"
+        @click="workspace.openDailyNote()"
+      >
+        <Icon icon="lucide:calendar-days" width="16" height="16" />
+      </button>
+      <button
+        class="w-[22px] h-[22px] p-0 border-0 rounded inline-flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text)] cursor-pointer"
+        :title="t('settings.title')"
+        @click="ui.openSettings()"
+      >
         <Icon icon="lucide:settings" width="16" height="16" />
       </button>
     </div>
@@ -176,7 +194,7 @@ onBeforeUnmount(() => {
   </Teleport>
 </template>
 
-<style>
+<style scoped>
 .tab-bar {
   display: flex;
   align-items: stretch;
@@ -274,34 +292,6 @@ onBeforeUnmount(() => {
 .tab-close:hover {
   background: var(--bg-hover);
   color: var(--text);
-}
-
-.ctx-menu {
-  position: fixed;
-  z-index: 1000;
-  background: var(--bg-sidebar);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  min-width: 160px;
-  padding: 4px 0;
-}
-
-.ctx-item {
-  display: block;
-  width: 100%;
-  text-align: left;
-  padding: 6px 14px;
-  background: transparent;
-  border: none;
-  border-radius: 0;
-  font-size: 12px;
-  color: var(--text);
-  cursor: pointer;
-}
-
-.ctx-item:hover {
-  background: var(--bg-selected);
 }
 
 .chevron-btn {

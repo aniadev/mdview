@@ -317,6 +317,97 @@ fn copy_path(source: String, dest_dir: String) -> Result<String, String> {
     Ok(dest.to_string_lossy().to_string())
 }
 
+#[derive(Serialize)]
+pub struct SearchResult {
+    pub path: String,
+    pub line_number: usize,
+    pub line_content: String,
+}
+
+#[tauri::command]
+fn search_workspace(query: String, roots: Vec<String>) -> Result<Vec<SearchResult>, String> {
+    if query.trim().is_empty() {
+        return Ok(Vec::new());
+    }
+    let query_lower = query.to_lowercase();
+    let mut files = Vec::new();
+
+    for root in roots {
+        let root_path = PathBuf::from(&root);
+        if !root_path.is_dir() {
+            continue;
+        }
+        for entry in WalkDir::new(root_path)
+            .follow_links(false)
+            .into_iter()
+            .filter_entry(|e| {
+                let name = e.file_name().to_string_lossy();
+                name != ".git" && name != "node_modules" && !name.starts_with('.')
+            })
+            .filter_map(|e| e.ok())
+        {
+            if entry.file_type().is_file() && is_md_file(entry.path()) {
+                files.push(entry.path().to_path_buf());
+            }
+        }
+    }
+
+    if files.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let num_threads = std::thread::available_parallelism()
+        .map(|n| n.get())
+        .unwrap_or(4);
+    let files = std::sync::Arc::new(files);
+    let query_lower = std::sync::Arc::new(query_lower);
+    let mut handles = Vec::new();
+
+    let chunk_size = files.len().div_ceil(num_threads);
+
+    for i in 0..num_threads {
+        let files = std::sync::Arc::clone(&files);
+        let query_lower = std::sync::Arc::clone(&query_lower);
+        
+        let start = i * chunk_size;
+        let end = (start + chunk_size).min(files.len());
+        if start >= files.len() {
+            break;
+        }
+
+        handles.push(std::thread::spawn(move || {
+            let mut chunk_results = Vec::new();
+            for file_path in &files[start..end] {
+                if let Ok(content) = std::fs::read_to_string(file_path) {
+                    for (idx, line) in content.lines().enumerate() {
+                        if line.to_lowercase().contains(&*query_lower) {
+                            chunk_results.push(SearchResult {
+                                path: file_path.to_string_lossy().to_string(),
+                                line_number: idx + 1,
+                                line_content: line.to_string(),
+                            });
+                        }
+                    }
+                }
+            }
+            chunk_results
+        }));
+    }
+
+    let mut results = Vec::new();
+    for h in handles {
+        if let Ok(mut r) = h.join() {
+            results.append(&mut r);
+        }
+    }
+
+    results.sort_by(|a, b| {
+        a.path.cmp(&b.path).then_with(|| a.line_number.cmp(&b.line_number))
+    });
+
+    Ok(results)
+}
+
 // ─── .code-workspace parsing (v1.1) ────────────────────────────────────────
 
 
@@ -774,6 +865,7 @@ pub fn run() {
             pty_kill,
             consume_pending_open_files,
             copy_path,
+            search_workspace,
         ])
 
         .build(tauri::generate_context!())

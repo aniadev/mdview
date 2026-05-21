@@ -19,6 +19,13 @@ const previewScrollPercent = ref(0);
 const headingIndex = ref(-1);
 const previewHeadingIndex = ref(-1);
 const previewRef = ref<InstanceType<typeof PreviewPane> | null>(null);
+const editorRef = ref<InstanceType<typeof SourceEditor> | null>(null);
+
+function onToggleChecklist(idx: number, checked: boolean) {
+  if (editorRef.value) {
+    (editorRef.value as any).toggleChecklist(idx, checked);
+  }
+}
 
 const tab = computed(() => tabs.activeTab);
 
@@ -97,10 +104,12 @@ async function onOpenBrowser() {
     >
       <template #left>
         <SourceEditor
+          ref="editorRef"
           :model-value="tab.content"
           :tab-key="tab.path"
           :scroll-percent="previewScrollPercent"
           :scroll-to-heading="previewHeadingIndex"
+          :target-line="ui.targetLine"
           @update:model-value="onUpdate"
           @scroll="onScroll"
           @save="onSave"
@@ -115,6 +124,7 @@ async function onOpenBrowser() {
           :scroll-percent="scrollPercent"
           :scroll-to-heading="headingIndex"
           @scroll="onPreviewScroll"
+          @toggle-checklist="onToggleChecklist"
         />
       </template>
     </SplitPane>

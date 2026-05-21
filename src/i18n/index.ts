@@ -142,6 +142,16 @@ const messages: Record<string, { en: string; vi: string }> = {
   'tour.next': { en: 'Next', vi: 'Tiếp' },
   'tour.back': { en: 'Back', vi: 'Quay lại' },
   'tour.finish': { en: 'Finish', vi: 'Hoàn tất' },
+
+  // --- Search and Daily Notes ---
+  'search.title': { en: 'Search', vi: 'Tìm kiếm' },
+  'search.placeholder': { en: 'Search in workspace…', vi: 'Tìm trong workspace…' },
+  'search.noResults': { en: 'No results found.', vi: 'Không tìm thấy kết quả.' },
+  'search.loading': { en: 'Searching…', vi: 'Đang tìm kiếm…' },
+  'search.resultsCount': { en: 'Found {count} match(es) in {filesCount} file(s)', vi: 'Tìm thấy {count} kết quả trong {filesCount} file' },
+  'settings.dailyNotesFolder': { en: 'Daily Notes Folder Path', vi: 'Đưòng dẫn Thư mục Daily Notes' },
+  'settings.dailyNotesFolderDesc': { en: 'Leave empty for first workspace root directory', vi: 'Để trống để tạo tại thư mục root đầu tiên của Workspace' },
+  'settings.dailyNotesHeader': { en: 'Daily Notes & Journaling', vi: 'Nhật ký Hàng ngày' },
 };
 
 const currentLocale: Ref<Locale> = ref('en');

@@ -3,7 +3,7 @@ import { ref } from "vue";
 import { load } from "@tauri-apps/plugin-store";
 import type { TocHeading } from "../components/TocPanel.vue";
 
-export type SidebarView = "explorer" | "outline";
+export type SidebarView = "explorer" | "outline" | "search";
 
 export const useUiStore = defineStore("ui", () => {
   const sidebarVisible = ref(true);
@@ -12,6 +12,7 @@ export const useUiStore = defineStore("ui", () => {
   const bottomPanelHeight = ref(280);
   const settingsOpen = ref(false);
   const sidebarView = ref<SidebarView>("explorer");
+  const targetLine = ref<number | null>(null);
   const currentHeadings = ref<TocHeading[]>([]);
   const activeHeadingIndex = ref(-1);
   const navigateHeadingTrigger = ref(0);
@@ -130,6 +131,7 @@ export const useUiStore = defineStore("ui", () => {
     bottomPanelHeight,
     settingsOpen,
     sidebarView,
+    targetLine,
     currentHeadings,
     activeHeadingIndex,
     navigateHeadingTrigger,

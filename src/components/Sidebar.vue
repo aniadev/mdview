@@ -49,10 +49,17 @@ onBeforeUnmount(() => {
   </aside>
 </template>
 
-<style>
+<style lang="scss" scoped>
 .sidebar {
   position: relative;
   flex: 0 0 auto;
+  /* bg, border, flex-col, overflow — applied via Tailwind on ExplorerPanel's root */
+  min-width: 140px;
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .sidebar-resize-handle {
@@ -63,11 +70,11 @@ onBeforeUnmount(() => {
   height: 100%;
   cursor: col-resize;
   z-index: 5;
-}
 
-.sidebar-resize-handle:hover,
-.sidebar-resize-handle.dragging {
-  background: var(--accent);
-  opacity: 0.4;
+  &:hover,
+  &.dragging {
+    background: var(--accent);
+    opacity: 0.4;
+  }
 }
 </style>

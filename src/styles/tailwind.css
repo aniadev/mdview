@@ -1,0 +1,19 @@
+@import "tailwindcss";
+
+@theme {
+  --color-app: var(--bg-app);
+  --color-sidebar: var(--bg-sidebar);
+  --color-tab-bar: var(--bg-tab-bar);
+  --color-tab-active: var(--bg-tab-active);
+  --color-tab-inactive: var(--bg-tab-inactive);
+  --color-hover: var(--bg-hover);
+  --color-selected: var(--bg-selected);
+  --color-code: var(--bg-code);
+  --color-border: var(--border);
+  --color-text: var(--text);
+  --color-text-muted: var(--text-muted);
+  --color-text-dim: var(--text-dim);
+  --color-accent: var(--accent);
+  --color-danger: var(--danger);
+  --color-link: var(--link);
+}

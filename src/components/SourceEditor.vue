@@ -22,6 +22,7 @@ const props = defineProps<{
   tabKey: string;
   scrollPercent?: number;
   scrollToHeading?: number;
+  targetLine?: number | null;
 }>();
 
 const emit = defineEmits<{
@@ -212,6 +213,35 @@ watch(
   }
 );
 
+watch(
+  () => props.targetLine,
+  (lineNum) => {
+    if (lineNum !== undefined && lineNum !== null && view) {
+      if (lineNum === -1) {
+        const doc = view.state.doc;
+        const endPos = doc.length;
+        view.dispatch({
+          selection: { anchor: endPos, head: endPos },
+          effects: [EditorView.scrollIntoView(endPos, { y: 'center' })],
+        });
+        view.focus();
+        uiStore.targetLine = null;
+      } else if (lineNum > 0) {
+        const doc = view.state.doc;
+        if (lineNum <= doc.lines) {
+          const line = doc.line(lineNum);
+          view.dispatch({
+            selection: { anchor: line.from, head: line.to },
+            effects: [EditorView.scrollIntoView(line.from, { y: 'center' })],
+          });
+          view.focus();
+          uiStore.targetLine = null; // Clear so clicking same result again works
+        }
+      }
+    }
+  }
+);
+
 function wrapSelection(before: string, after: string, placeholder = "text") {
   if (!view) return;
   view.focus();
@@ -312,6 +342,46 @@ function toggleWrap() {
   view.destroy();
   view = build(current);
 }
+
+function toggleChecklist(targetIdx: number, checked: boolean) {
+  if (!view) return;
+  const docText = view.state.doc.toString();
+  const checkboxRegex = /^(\s*[-*+]\s+\[)([ xX])(\])/gm;
+  let match;
+  let count = 0;
+  let foundMatch = null;
+  
+  while ((match = checkboxRegex.exec(docText)) !== null) {
+    if (count === targetIdx) {
+      foundMatch = {
+        index: match.index,
+        prefix: match[1],
+        status: match[2],
+        suffix: match[3]
+      };
+      break;
+    }
+    count++;
+  }
+  
+  if (foundMatch) {
+    const startPos = foundMatch.index + foundMatch.prefix.length;
+    const endPos = startPos + 1;
+    const newStatus = checked ? 'x' : ' ';
+    view.dispatch({
+      changes: {
+        from: startPos,
+        to: endPos,
+        insert: newStatus
+      }
+    });
+    emit("save");
+  }
+}
+
+defineExpose({
+  toggleChecklist
+});
 </script>
 
 <template>
@@ -341,7 +411,7 @@ function toggleWrap() {
   </div>
 </template>
 
-<style>
+<style scoped>
 .source-editor-wrap {
   display: flex;
   flex-direction: column;
@@ -383,8 +453,10 @@ function toggleWrap() {
   color: var(--text);
 }
 
-.tb-btn:active {
+.tb-btn:active,
+.tb-btn.active {
   background: var(--bg-selected);
+  color: var(--accent);
 }
 
 .tb-sep {
@@ -405,13 +477,15 @@ function toggleWrap() {
   background: var(--bg-app);
 }
 
-.source-editor .cm-editor {
+/* :deep() is required because .cm-editor and .cm-scroller are injected by CodeMirror
+   and don't carry Vue's scoped [data-v-xxx] attribute */
+.source-editor :deep(.cm-editor) {
   height: 100%;
   font-family: var(--font-mono);
   font-size: 13px;
 }
 
-.source-editor .cm-scroller {
+.source-editor :deep(.cm-scroller) {
   font-family: var(--font-mono);
 }
 </style>

@@ -112,25 +112,30 @@ async function onRenameCommit(filename: string) {
 </script>
 
 <template>
-  <li class="tree-node">
+  <!-- tree-node -->
+  <li class="select-none">
     <template v-if="!showRename">
+      <!-- tree-row -->
       <div
-        class="tree-row"
-        :class="{ dim, selected, 'multi-selected': multiSelected }"
+        class="tree-row flex items-center gap-1 pr-2 cursor-pointer whitespace-nowrap text-[13px] leading-[22px] rounded-[3px] hover:bg-[var(--bg-hover)]"
+        :class="{ dim: dim, selected: selected, 'multi-selected': multiSelected }"
         :style="{ paddingLeft: indent }"
         @click="onRowClick"
         @contextmenu="onContextMenu"
       >
-        <span class="tree-chevron">
+        <!-- tree-chevron -->
+        <span class="w-4 text-center text-[var(--text-muted)] text-[10px] flex-[0_0_16px] select-none">
           <Icon v-if="node.is_dir" :icon="node.expanded ? 'lucide:chevron-down' : 'lucide:chevron-right'" width="12" height="12" />
         </span>
-        <span class="tree-icon">
+        <!-- tree-icon -->
+        <span class="w-4 text-center flex-[0_0_16px] text-[var(--text-muted)] select-none">
           <Icon v-if="node.is_dir" :icon="node.expanded ? 'lucide:folder-open' : 'lucide:folder'" width="14" height="14" />
           <Icon v-else-if="isAgent" icon="lucide:bot" width="14" height="14" :style="{ color: 'var(--accent)' }" />
           <Icon v-else-if="isMdFile" icon="lucide:file-text" width="14" height="14" />
           <Icon v-else icon="lucide:file" width="14" height="14" />
         </span>
-        <span class="tree-name">{{ node.name }}</span>
+        <!-- tree-name -->
+        <span class="overflow-hidden text-ellipsis whitespace-nowrap select-none">{{ node.name }}</span>
       </div>
     </template>
     <template v-else>
@@ -144,11 +149,12 @@ async function onRenameCommit(filename: string) {
       />
     </template>
 
+    <!-- tree-children -->
     <ul
       v-if="node.is_dir && node.expanded && (node.children || showCreateChild || showCreateDirChild)"
-      class="tree-children"
+      class="list-none m-0 p-0"
     >
-      <li v-if="showCreateChild" class="tree-node">
+      <li v-if="showCreateChild" class="select-none">
         <InlineFilenameInput
           ref="inputRef"
           :depth="depth + 1"
@@ -157,7 +163,7 @@ async function onRenameCommit(filename: string) {
           @cancel="fsui.cancelInputs()"
         />
       </li>
-      <li v-if="showCreateDirChild" class="tree-node">
+      <li v-if="showCreateDirChild" class="select-none">
         <InlineFilenameInput
           ref="inputRef"
           :depth="depth + 1"
@@ -175,3 +181,22 @@ async function onRenameCommit(filename: string) {
     </ul>
   </li>
 </template>
+
+<style lang="scss" scoped>
+/* Selected/multi-selected states use CSS custom properties — kept in scoped style */
+.tree-row {
+  &.selected {
+    background: var(--bg-selected);
+  }
+
+  &.multi-selected {
+    background: color-mix(in srgb, var(--accent) 18%, transparent);
+    outline: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+    outline-offset: -1px;
+  }
+
+  &.dim {
+    opacity: 0.4;
+  }
+}
+</style>

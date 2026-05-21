@@ -55,6 +55,12 @@ watch(
 );
 
 function onKeydown(e: KeyboardEvent) {
+  if (e.altKey && e.key.toLowerCase() === "d") {
+    e.preventDefault();
+    void workspace.openDailyNote();
+    return;
+  }
+
   const mod = e.metaKey || e.ctrlKey;
   if (!mod) return;
   const key = e.key.toLowerCase();
@@ -126,19 +132,34 @@ watch(
 </script>
 
 <template>
-  <div class="app-root">
-    <div class="app-shell">
-      <div class="work-area">
-        <div class="work-top">
+  <!-- app-root -->
+  <div class="flex flex-col h-full w-full">
+    <!-- app-shell -->
+    <div class="flex flex-1 min-h-0">
+      <!-- work-area -->
+      <div class="flex flex-col flex-1 min-w-0 min-h-0">
+        <!-- work-top -->
+        <div class="flex flex-1 min-h-0">
           <Sidebar v-show="ui.sidebarVisible" />
-          <main class="main-area">
-            <div v-if="workspace.error" class="error-banner">
+          <!-- main-area -->
+          <main class="flex-1 flex flex-col bg-[var(--bg-app)] overflow-hidden">
+            <!-- error-banner -->
+            <div
+              v-if="workspace.error"
+              class="bg-[#5a1d1d] text-[var(--text)] px-3 py-2 text-xs border-b border-[var(--border)] flex justify-between items-center gap-2"
+            >
               <span>{{ workspace.error }}</span>
-              <button @click="workspace.error = null"><Icon icon="lucide:x" width="14" height="14" /></button>
+              <button
+                class="border-none bg-transparent text-[var(--text)] cursor-pointer text-sm px-1 py-0 hover:bg-transparent"
+                @click="workspace.error = null"
+              >
+                <Icon icon="lucide:x" width="14" height="14" />
+              </button>
             </div>
             <TabBar />
             <EditorArea v-if="tabs.activeTab" />
-            <div v-else class="empty-editor">
+            <!-- empty-editor -->
+            <div v-else class="flex-1 flex items-center justify-center text-[var(--text-muted)] text-[13px]">
               <template v-if="workspace.hasWorkspace">
                 {{ t('app.empty.selectFile').replace('{key}', modKey) }}
               </template>
@@ -168,30 +189,7 @@ watch(
 </template>
 
 <style>
-.app-root {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  width: 100%;
-}
-.app-shell {
-  display: flex;
-  flex: 1;
-  min-height: 0;
-}
-.work-area {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-width: 0;
-  min-height: 0;
-}
-.work-top {
-  display: flex;
-  flex: 1;
-  min-height: 0;
-}
-
+/* app-toast is a Teleport target — must stay unscoped */
 .app-toast {
   position: fixed;
   bottom: 18px;

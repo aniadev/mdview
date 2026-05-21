@@ -10,6 +10,8 @@ import type {
   WorkspaceRoot,
 } from "../types";
 import { useTabsStore } from "./tabs";
+import { useUiStore } from "./ui";
+import { useI18n } from "../i18n";
 
 const STORE_FILE = "mdview-settings.json";
 const KEY_WORKSPACE_PATH = "workspace_path"; // legacy single-folder
@@ -567,6 +569,59 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     }
   }
 
+  async function openDailyNote() {
+    error.value = null;
+    try {
+      const d = new Date();
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, "0");
+      const date = String(d.getDate()).padStart(2, "0");
+      const dateStr = `${year}-${month}-${date}`;
+
+      const store = await load("mdview-settings.json", { autoSave: true, defaults: {} });
+      const configFolder = await store.get<string>("daily_notes_folder");
+      
+      const targetDir = configFolder ? configFolder.trim() : rootPath.value;
+      if (!targetDir) {
+        error.value = "Chưa mở thư mục workspace nào để tạo Daily Note. / No workspace folder opened to create Daily Note.";
+        return;
+      }
+
+      // Ensure directory format and normalize separators
+      const normalizedDir = targetDir.replace(/\\/g, "/");
+      const filePath = `${normalizedDir}/${dateStr}.md`;
+
+      const exists = await invoke<boolean>("path_exists", { path: filePath });
+      if (!exists) {
+        // Create file with locale-appropriate template
+        const { currentLocale } = useI18n();
+        const isVi = currentLocale.value === "vi";
+        const heading = isVi ? `# Nhật ký Ngày ${dateStr}` : `# Daily Note ${dateStr}`;
+        const placeholder = isVi ? "- Viết tại đây..." : "- Write here...";
+        const initialContent = `${heading}\n\n${placeholder}\n`;
+
+        await invoke("write_text", { path: filePath, contents: initialContent });
+        
+        // Refresh workspace files
+        await refreshDir(normalizedDir);
+      }
+
+      // Open tab
+      const fileName = `${dateStr}.md`;
+      const tabsStore = useTabsStore();
+      await tabsStore.openFile(filePath, fileName);
+
+      // Wait a tiny bit and focus/scroll to the bottom of the file
+      const uiStore = useUiStore();
+      setTimeout(() => {
+        uiStore.targetLine = -1; // -1 represents scroll to bottom and focus
+      }, 100);
+
+    } catch (e) {
+      error.value = String(e);
+    }
+  }
+
   return {
     roots,
     workspaceFile,
@@ -603,5 +658,6 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     saveCurrentWorkspace,
     saveAsNewWorkspace,
     recentWorkspaces,
+    openDailyNote,
   };
 });

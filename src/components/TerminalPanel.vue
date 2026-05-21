@@ -3,6 +3,7 @@ import { onMounted } from "vue";
 import { useTerminalStore } from "../stores/terminal";
 import TerminalTabBar from "./TerminalTabBar.vue";
 import TerminalView from "./TerminalView.vue";
+import Button from "./ui/Button.vue";
 
 const termStore = useTerminalStore();
 
@@ -32,7 +33,7 @@ function onCreateFirst() {
       </div>
       <div v-if="termStore.sessions.length === 0" class="terminal-empty">
         <p>No active terminal.</p>
-        <button class="primary" @click="onCreateFirst">New Terminal</button>
+        <Button variant="default" size="sm" @click="onCreateFirst">New Terminal</Button>
       </div>
     </div>
   </div>

@@ -3,6 +3,7 @@ import { computed } from "vue";
 import MarkdownIt from "markdown-it";
 import { useUpdaterStore } from "../stores/updater";
 import { useI18n } from "../i18n";
+import Button from "./ui/Button.vue";
 
 const { t } = useI18n();
 
@@ -77,20 +78,20 @@ function formatBytes(n: number): string {
 
         <footer class="update-modal-footer">
           <template v-if="updater.state === 'downloading'">
-            <button class="primary" disabled>{{ t('settings.downloading').replace(' {percent}%', '') }}…</button>
+            <Button variant="default" disabled>{{ t('settings.downloading').replace(' {percent}%', '') }}…</Button>
           </template>
           <template v-else-if="updater.state === 'ready'">
-            <button class="primary" disabled>{{ t('settings.ready').split('—')[1]?.trim() ?? 'Installing...' }}</button>
+            <Button variant="default" disabled>{{ t('settings.ready').split('—')[1]?.trim() ?? 'Installing...' }}</Button>
           </template>
           <template v-else-if="updater.state === 'error'">
-            <button @click="updater.closeModal()">{{ t('update.close') }}</button>
-            <button class="primary" @click="updater.retry()">{{ t('update.tryAgain') }}</button>
+            <Button variant="outline" @click="updater.closeModal()">{{ t('update.close') }}</Button>
+            <Button variant="default" @click="updater.retry()">{{ t('update.tryAgain') }}</Button>
           </template>
           <template v-else>
-            <button @click="updater.closeModal()">{{ t('update.later') }}</button>
-            <button class="primary" @click="updater.startInstall()">
+            <Button variant="outline" @click="updater.closeModal()">{{ t('update.later') }}</Button>
+            <Button variant="default" @click="updater.startInstall()">
               {{ (updater.update as any)?.isManual ? t('update.goDownload') : t('update.install') }}
-            </button>
+            </Button>
           </template>
         </footer>
       </div>

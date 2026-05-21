@@ -10,6 +10,8 @@ import { useI18n } from '../i18n';
 import FileTreeNode from './FileTreeNode.vue';
 import InlineFilenameInput from './InlineFilenameInput.vue';
 import TocPanel from './TocPanel.vue';
+import SearchPanel from './SearchPanel.vue';
+import Button from './ui/Button.vue';
 
 const { t } = useI18n();
 
@@ -67,6 +69,8 @@ function onWindowKeydown(e: KeyboardEvent) {
   if (inEditable) return;
 
   if (key === 'c') {
+    const selection = window.getSelection();
+    if (selection && selection.toString().length > 0) return;
     if (fsui.selectedCount === 0) return;
     e.preventDefault();
     const entries = [...fsui.selectedItems.entries()];
@@ -244,43 +248,58 @@ async function ctxPaste(targetDir: string) {
 </script>
 
 <template>
-  <div class="explorer-panel">
-    <header class="sidebar-header">
-      <span class="ws-name" :title="workspace.workspaceFile ?? workspace.rootPath ?? ''">
+  <div class="explorer-panel flex flex-col h-full overflow-hidden">
+    <!-- sidebar-header -->
+    <header class="flex items-center justify-between px-3 border-b border-[var(--border)] text-[11px] uppercase tracking-[0.5px] text-[var(--text-muted)]" style="padding-top:4px;padding-bottom:5px">
+      <!-- ws-name -->
+      <span
+        class="overflow-hidden text-ellipsis whitespace-nowrap normal-case text-xs text-[var(--text)] font-semibold tracking-normal"
+        :title="workspace.workspaceFile ?? workspace.rootPath ?? ''"
+      >
         {{ workspace.hasWorkspace ? workspace.displayName : 'Explorer' }}
       </span>
-      <div class="sidebar-actions">
-        <button
+      <!-- sidebar-actions -->
+      <div class="flex gap-1">
+        <Button
           v-if="!workspace.hasWorkspace"
-          class="icon-btn"
+          variant="ghost"
+          size="icon"
           :title="t('explorer.addFolderOrWs')"
           @click="workspace.addWorkspace()"
         >
           <Icon icon="lucide:plus" width="14" height="14" />
-        </button>
+        </Button>
         <template v-else>
-          <button
-            class="icon-btn"
+          <Button
+            variant="ghost"
+            size="icon"
             :title="t('explorer.addFolderToWs')"
             @click="workspace.addFolderToCurrentWorkspace()"
           >
             <Icon icon="lucide:folder-plus" width="14" height="14" />
-          </button>
-          <button
+          </Button>
+          <Button
             v-if="!workspace.workspaceFile"
-            class="icon-btn"
+            variant="ghost"
+            size="icon"
             :title="t('explorer.saveWs')"
             @click="workspace.saveAsNewWorkspace()"
           >
             <Icon icon="lucide:save" width="14" height="14" />
-          </button>
-          <button class="icon-btn" :title="t('explorer.closeWs')" @click="workspace.removeWorkspace()">
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            :title="t('explorer.closeWs')"
+            @click="workspace.removeWorkspace()"
+          >
             <Icon icon="lucide:x" width="14" height="14" />
-          </button>
+          </Button>
         </template>
       </div>
     </header>
 
+    <!-- sidebar-activity-row -->
     <div class="sidebar-activity-row">
       <button
         class="activity-btn"
@@ -300,30 +319,34 @@ async function ctxPaste(targetDir: string) {
       </button>
       <button
         class="activity-btn"
+        :class="{ active: ui.sidebarView === 'search' }"
+        :title="t('search.title')"
+        @click="ui.setSidebarView('search')"
+      >
+        <Icon icon="lucide:search" width="14" height="14" />
+      </button>
+      <button
+        class="activity-btn"
         :class="{ active: ui.bottomPanelVisible }"
         :title="t('terminal.toggle')"
         @click="ui.toggleBottomPanel()"
       >
         <Icon icon="lucide:terminal" width="14" height="14" />
       </button>
-      <!-- <button
-        class="activity-btn"
-        :title="t('sidebar.collapse')"
-        @click="ui.toggleSidebar()"
-      >
-        <Icon icon="lucide:panel-left-close" width="14" height="14" />
-      </button> -->
     </div>
 
-    <div class="sidebar-body">
-      <div v-if="!workspace.hasWorkspace" class="sidebar-empty">
-        <p>{{ t('explorer.noFolder') }}</p>
-        <div v-if="workspace.recentWorkspaces.length" class="recent-list">
-          <div class="recent-header">{{ t('explorer.recent') }}</div>
+    <!-- sidebar-body -->
+    <div class="flex-1 overflow-auto py-1">
+      <!-- sidebar-empty (no workspace) -->
+      <div v-if="!workspace.hasWorkspace" class="flex flex-col items-center justify-center h-full p-6 text-center gap-3 text-[var(--text-muted)]">
+        <p class="m-0 text-xs leading-relaxed">{{ t('explorer.noFolder') }}</p>
+        <!-- recent-list -->
+        <div v-if="workspace.recentWorkspaces.length" class="py-2 w-full">
+          <div class="px-3 py-1 text-[11px] uppercase tracking-[0.5px] text-[var(--text-muted)]">{{ t('explorer.recent') }}</div>
           <button
             v-for="(p, i) in workspace.recentWorkspaces"
             :key="i"
-            class="recent-item"
+            class="flex items-center gap-1.5 w-full px-3 py-1 border-0 rounded-none bg-transparent text-[var(--text)] text-xs cursor-pointer text-left hover:bg-[var(--bg-hover)]"
             :title="p"
             @click="
               p.toLowerCase().endsWith('.code-workspace')
@@ -338,14 +361,12 @@ async function ctxPaste(targetDir: string) {
               width="14"
               height="14"
             />
-            <span>{{ p.replace(/\\/g, '/').split('/').filter(Boolean).pop() || p }}</span>
-            <span class="recent-path">{{
-              p.replace(/\\/g, '/').split('/').filter(Boolean).slice(0, -1).join('/') || '/'
-            }}</span>
+            <span class="overflow-hidden text-ellipsis whitespace-nowrap">{{ p.replace(/\\/g, '/').split('/').filter(Boolean).pop() || p }}</span>
+            <span class="text-[var(--text-muted)] text-[11px] ml-auto shrink-0">{{ p.replace(/\\/g, '/').split('/').filter(Boolean).slice(0, -1).join('/') || '/' }}</span>
           </button>
         </div>
-        <button class="primary" @click="workspace.addFolderDirect()">{{ t('explorer.addFolder') }}</button>
-        <button @click="workspace.addWorkspace()">{{ t('explorer.openWorkspace') }}</button>
+        <Button variant="default" @click="workspace.addFolderDirect()">{{ t('explorer.addFolder') }}</Button>
+        <Button variant="outline" @click="workspace.addWorkspace()">{{ t('explorer.openWorkspace') }}</Button>
       </div>
 
       <TocPanel
@@ -355,51 +376,63 @@ async function ctxPaste(targetDir: string) {
         @navigate="onTocNavigate"
       />
 
+      <SearchPanel
+        v-else-if="ui.sidebarView === 'search'"
+      />
+
       <template v-else-if="ui.sidebarView === 'explorer'">
-        <div v-if="workspace.loading" class="sidebar-empty" style="height: auto; padding: 16px">
-          <p>{{ t('explorer.loading') }}</p>
+        <div v-if="workspace.loading" class="flex flex-col items-center justify-center p-4 text-[var(--text-muted)]" style="height: auto">
+          <p class="m-0 text-xs">{{ t('explorer.loading') }}</p>
         </div>
         <template v-else>
           <section v-for="root in workspace.roots" :key="root.path" class="ws-root">
             <div class="ws-root-header" @contextmenu.prevent="onRootCtxMenu($event, root.path)">
               <span class="ws-root-name" :title="root.path">{{ root.name }}</span>
               <span class="ws-root-actions">
-                <button
+                <Button
                   v-if="fsui.hasClipboard"
-                  class="icon-btn ws-root-add ws-root-add-visible"
+                  variant="ghost"
+                  size="icon"
+                  class="ws-root-add ws-root-add-visible"
                   :title="t('ctx.pasteHere')"
                   @click="ctxPaste(root.path)"
                 >
                   <Icon icon="lucide:clipboard-paste" width="14" height="14" />
-                </button>
-                <button
-                  class="icon-btn ws-root-add"
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  class="ws-root-add"
                   :title="t('explorer.refresh')"
                   @click="workspace.refreshRootPreservingState(root.path)"
                 >
                   <Icon icon="lucide:refresh-cw" width="14" height="14" />
-                </button>
-                <button
-                  class="icon-btn ws-root-add"
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  class="ws-root-add"
                   :title="t('explorer.newFile')"
                   @click="startRootCreate(root.path)"
                 >
                   <Icon icon="lucide:file-plus" width="14" height="14" />
-                </button>
-                <button
-                  class="icon-btn ws-root-add"
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  class="ws-root-add"
                   :title="t('explorer.newFolder')"
                   @click="startRootCreateDir(root.path)"
                 >
                   <Icon icon="lucide:folder-plus" width="14" height="14" />
-                </button>
+                </Button>
               </span>
             </div>
             <div v-if="root.loadError" class="ws-root-error" :title="root.path">
               {{ root.loadError }}
             </div>
-            <ul v-else class="tree">
-              <li v-if="fsui.pendingCreateInDir === root.path" class="tree-node">
+            <ul v-else class="list-none m-0 p-0">
+              <li v-if="fsui.pendingCreateInDir === root.path" class="select-none">
                 <InlineFilenameInput
                   ref="rootInputRef"
                   :depth="0"
@@ -408,7 +441,7 @@ async function ctxPaste(targetDir: string) {
                   @cancel="fsui.cancelInputs()"
                 />
               </li>
-              <li v-if="fsui.pendingCreateDirInDir === root.path" class="tree-node">
+              <li v-if="fsui.pendingCreateDirInDir === root.path" class="select-none">
                 <InlineFilenameInput
                   ref="rootDirInputRef"
                   :depth="0"
@@ -425,8 +458,8 @@ async function ctxPaste(targetDir: string) {
               />
             </ul>
           </section>
-          <div v-if="!workspace.hasAnyMd" class="sidebar-empty" style="height: auto; padding: 16px">
-            <p>{{ t('explorer.noMdFiles') }}</p>
+          <div v-if="!workspace.hasAnyMd" class="flex flex-col items-center justify-center p-4 text-[var(--text-muted)]" style="height: auto">
+            <p class="m-0 text-xs">{{ t('explorer.noMdFiles') }}</p>
           </div>
         </template>
       </template>
@@ -466,14 +499,7 @@ async function ctxPaste(targetDir: string) {
   </div>
 </template>
 
-<style>
-.explorer-panel {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  overflow: hidden;
-}
-
+<style lang="scss" scoped>
 .sidebar-activity-row {
   display: flex;
   align-items: center;
@@ -481,35 +507,31 @@ async function ctxPaste(targetDir: string) {
   padding: 4px 8px;
   border-bottom: 1px solid var(--border);
   background: var(--bg-tab-bar);
-}
 
-.sidebar-activity-row .activity-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  background: transparent;
-  border: 1px solid transparent;
-  color: var(--text-muted);
-  font-size: 11px;
-  padding: 2px 6px;
-  border-radius: 3px;
-  cursor: pointer;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
+  .activity-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--text-muted);
+    font-size: 11px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 
-.sidebar-activity-row .activity-btn:hover {
-  color: var(--text);
-  background: var(--bg-app);
-}
+    &:hover,
+    &.active {
+      color: var(--text);
+      background: var(--bg-app);
+    }
 
-.sidebar-activity-row .activity-btn.active {
-  color: var(--text);
-  background: var(--bg-app);
-}
-
-.sidebar-activity-row .activity-btn:last-child {
-  margin-left: auto;
+    &:last-child {
+      margin-left: auto;
+    }
+  }
 }
 
 .ws-root {
@@ -541,8 +563,8 @@ async function ctxPaste(targetDir: string) {
 }
 
 .ws-root-add {
-  width: 18px;
-  height: 18px;
+  width: 18px !important;
+  height: 18px !important;
   font-size: 13px;
   opacity: 0;
   transition: opacity 0.1s;
@@ -552,14 +574,45 @@ async function ctxPaste(targetDir: string) {
   opacity: 1;
 }
 
-.ws-root-add.ws-root-add-visible {
-  opacity: 1;
+.ws-root-add-visible {
+  opacity: 1 !important;
 }
 
 .ws-root-error {
   padding: 6px 12px;
   font-size: 11px;
   color: var(--danger);
+}
+</style>
+
+<!-- ctx-menu / ctx-item are Teleport targets — cannot be scoped -->
+<style>
+.ctx-menu {
+  position: fixed;
+  z-index: 1000;
+  background: var(--bg-sidebar);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  min-width: 160px;
+  padding: 4px 0;
+}
+
+.ctx-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 6px 14px;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  font-size: 12px;
+  color: var(--text);
+  cursor: pointer;
+
+  &:hover {
+    background: var(--bg-selected);
+  }
 }
 
 .ctx-separator {

@@ -32,6 +32,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: "scroll", pct: number): void;
+  (e: "toggle-checklist", idx: number, checked: boolean): void;
 }>();
 
 const themeStore = useThemeStore();
@@ -172,8 +173,15 @@ function applyHeadingScroll(index: number) {
 
 async function render() {
   const raw = md.render(props.source ?? "");
+  let checkboxCount = 0;
+  const processedHtml = raw.replace(/<input\s+([^>]*?)type="checkbox"([^>]*?)>/g, (_match, pre, post) => {
+    let attrs = (pre + " " + post).replace(/\bdisabled\b/g, "").trim();
+    const idx = checkboxCount++;
+    return `<input type="checkbox" ${attrs} data-checklist-idx="${idx}" style="cursor: pointer; position: relative; top: 1px;">`;
+  });
+  
   const baseDir = dirname(props.filePath);
-  html.value = raw.replace(
+  html.value = processedHtml.replace(
     /<img\s+([^>]*?)src="([^"]+)"([^>]*)>/g,
     (_m, pre: string, src: string, post: string) => {
       if (!src || isAbsolute(src)) return `<img ${pre}src="${src}"${post}>`;
@@ -368,6 +376,14 @@ async function exportForPrint(title: string) {
   }
 }
 
+function onCheckboxChange(e: Event) {
+  const target = e.target as HTMLInputElement;
+  if (target && target.type === "checkbox" && target.hasAttribute("data-checklist-idx")) {
+    const idx = parseInt(target.getAttribute("data-checklist-idx") || "0", 10);
+    emit("toggle-checklist", idx, target.checked);
+  }
+}
+
 defineExpose({
   buildStandaloneHtml,
   exportForPrint,
@@ -386,7 +402,7 @@ const isEmpty = computed(() => !props.source || props.source.trim() === "");
         <Icon :icon="themeStore.previewTheme === 'dark' ? 'lucide:sun' : 'lucide:moon'" width="16" height="16" />
       </button>
     </div>
-    <div ref="root" class="preview-pane" :data-theme="themeStore.previewTheme" @scroll.passive="onUserScroll">
+    <div ref="root" class="preview-pane" :data-theme="themeStore.previewTheme" @scroll.passive="onUserScroll" @change="onCheckboxChange">
       <div v-if="isEmpty" class="preview-empty">{{ t('preview.empty') }}</div>
       <div v-else class="markdown-body" v-html="html"></div>
     </div>

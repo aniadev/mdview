@@ -197,11 +197,12 @@ jobs:
           MAC_NAME=$(get_name 'universal\.app\.tar\.gz\.sig$')
           if [ -n "$MAC_NAME" ]; then
             MAC_SIG=$(curl -fsL "${BASE_URL}/${MAC_NAME}")
+            MAC_URL="${BASE_URL}/${MAC_NAME%.sig}"
             PLATFORMS=$(jq -n \
-              --arg u "${BASE_URL}/${MAC_NAME%.sig}" --arg s "$MAC_SIG" --argjson p "$PLATFORMS" \
-              '$p + {"darwin-universal":{"signature":$s,"url":$u}}')
+              --arg u "$MAC_URL" --arg s "$MAC_SIG" --argjson p "$PLATFORMS" \
+              '$p + {"darwin-aarch64":{"signature":$s,"url":$u},"darwin-x86_64":{"signature":$s,"url":$u}}')
           else
-            echo "WARNING: macOS .sig not found — skipping darwin-universal"
+            echo "WARNING: macOS .sig not found — skipping darwin-aarch64/darwin-x86_64"
           fi
 
           WIN_NAME=$(get_name 'x64-setup\.exe\.sig$')

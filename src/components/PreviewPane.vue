@@ -42,7 +42,7 @@ const md = new MarkdownIt({
   html: true,
   linkify: true,
   typographer: false,
-  breaks: false,
+  breaks: true,
   highlight: (code, lang) => {
     if (lang === "mermaid") return "";
     if (lang && hljs.getLanguage(lang)) {
@@ -559,8 +559,46 @@ const isEmpty = computed(() => !props.source || props.source.trim() === "");
   padding-left: 1.6em;
 }
 
+.markdown-body ul {
+  list-style-type: disc;
+}
+
+.markdown-body ol {
+  list-style-type: decimal;
+}
+
+.markdown-body ul ul {
+  list-style-type: circle;
+}
+
+.markdown-body ul ul ul {
+  list-style-type: square;
+}
+
+.markdown-body ol ol {
+  list-style-type: lower-alpha;
+}
+
+.markdown-body ol ol ol {
+  list-style-type: lower-roman;
+}
+
 .markdown-body li {
   margin-bottom: 0.2em;
+}
+
+.markdown-body li:has(> input[type="checkbox"]) {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  list-style: none;
+  cursor: pointer;
+}
+
+.markdown-body input[type="checkbox"] {
+  margin-top: 3px;
+  flex-shrink: 0;
+  cursor: pointer;
 }
 
 .markdown-body table {

@@ -235,6 +235,24 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     node.expanded = true;
   }
 
+  async function ensureDirExpanded(path: string): Promise<void> {
+    const normalized = path.replace(/\\/g, "/");
+    const node = findNodeByPath(normalized);
+    if (!node || !node.is_dir || node.expanded) return;
+    if (!node.children) {
+      node.loading = true;
+      try {
+        node.children = await listDir(node.path);
+      } catch (e) {
+        error.value = String(e);
+        node.loading = false;
+        return;
+      }
+      node.loading = false;
+    }
+    node.expanded = true;
+  }
+
   function findNodeByPath(target: string): TreeNode | null {
     function walk(nodes: TreeNode[]): TreeNode | null {
       for (const n of nodes) {
@@ -640,6 +658,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     removeRoot,
     restoreWorkspace,
     toggleDir,
+    ensureDirExpanded,
     refreshRoot,
     refreshRootPreservingState,
     refreshParentOf,

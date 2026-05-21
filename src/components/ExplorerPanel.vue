@@ -111,16 +111,16 @@ onBeforeUnmount(() => {
 });
 
 async function ctxNewFile() {
-  fsui.requestCreateIn(
-    fsui.ctxMenu.isDir ? fsui.ctxMenu.targetPath : parentOf(fsui.ctxMenu.targetPath),
-  );
+  const targetDir = fsui.ctxMenu.isDir ? fsui.ctxMenu.targetPath : parentOf(fsui.ctxMenu.targetPath);
+  await workspace.ensureDirExpanded(targetDir);
+  fsui.requestCreateIn(targetDir);
   fsui.closeContextMenu();
 }
 
 async function ctxNewFolder() {
-  fsui.requestCreateDirIn(
-    fsui.ctxMenu.isDir ? fsui.ctxMenu.targetPath : parentOf(fsui.ctxMenu.targetPath),
-  );
+  const targetDir = fsui.ctxMenu.isDir ? fsui.ctxMenu.targetPath : parentOf(fsui.ctxMenu.targetPath);
+  await workspace.ensureDirExpanded(targetDir);
+  fsui.requestCreateDirIn(targetDir);
   fsui.closeContextMenu();
 }
 
@@ -187,18 +187,22 @@ function removeRootFromWs() {
   workspace.removeRoot(path);
 }
 
-function startRootCreate(rootPath: string) {
+async function startRootCreate(rootPath: string) {
   const activeFilePath = tabs.activeTab?.path?.replace(/\\/g, '/');
   const normalizedRoot = rootPath.replace(/\\/g, '/');
   if (activeFilePath?.startsWith(normalizedRoot + '/')) {
     const lastSlash = activeFilePath.lastIndexOf('/');
-    fsui.requestCreateIn(activeFilePath.slice(0, lastSlash));
+    const targetDir = activeFilePath.slice(0, lastSlash);
+    await workspace.ensureDirExpanded(targetDir);
+    fsui.requestCreateIn(targetDir);
   } else {
+    await workspace.ensureDirExpanded(rootPath);
     fsui.requestCreateIn(rootPath);
   }
 }
 
-function startRootCreateDir(rootPath: string) {
+async function startRootCreateDir(rootPath: string) {
+  await workspace.ensureDirExpanded(rootPath);
   fsui.requestCreateDirIn(rootPath);
 }
 

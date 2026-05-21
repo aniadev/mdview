@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import { ref, computed } from "vue";
+import { ref, shallowRef, computed } from "vue";
 import { check, type Update } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
 import { getVersion } from "@tauri-apps/api/app";
@@ -16,7 +16,7 @@ export type UpdaterState =
 
 export const useUpdaterStore = defineStore("updater", () => {
   const state = ref<UpdaterState>("idle");
-  const update = ref<Update | null>(null);
+  const update = shallowRef<Update | null>(null);
   const downloadedBytes = ref(0);
   const totalBytes = ref(0);
   const errorMsg = ref<string | null>(null);

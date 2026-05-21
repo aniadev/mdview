@@ -3,6 +3,7 @@ import { ref, computed, watch, onMounted, nextTick } from "vue";
 import { Icon } from "@iconify/vue";
 import MarkdownIt from "markdown-it";
 import markdownItAnchor from "markdown-it-anchor";
+import markdownItTaskLists from "markdown-it-task-lists";
 import katexPlugin from "@vscode/markdown-it-katex";
 import hljs from "highlight.js";
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
@@ -56,6 +57,7 @@ const md = new MarkdownIt({
   },
 })
   .use(markdownItAnchor)
+  .use(markdownItTaskLists)
   .use(katexPlugin);
 
 const defaultFence = md.renderer.rules.fence!;

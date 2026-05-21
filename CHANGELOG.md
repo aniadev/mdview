@@ -2,6 +2,12 @@
 
 All notable changes to mdview.
 
+## [1.7.1] — 2026-05-22
+
+### Fixed
+
+- **macOS update install crash** — `Update` object from `@tauri-apps/plugin-updater` was stored in a Vue `ref()`, which deep-proxies objects. Private class fields (`#field`) are brand-checked against the original instance; calling `downloadAndInstall()` through a Proxy threw `TypeError: cannot read private member`. Fixed by switching to `shallowRef`, which stores the object unwrapped.
+
 ## [1.7.0] — 2026-05-22
 
 ### Added

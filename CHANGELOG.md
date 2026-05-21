@@ -2,6 +2,25 @@
 
 All notable changes to mdview.
 
+## [1.6.0] — 2026-05-21
+
+### Added
+
+- **Interactive Preview Checklist** — click checkboxes directly in the Preview pane to toggle `[ ]` ↔ `[x]`. Changes are applied in the editor via CodeMirror transaction, preserving undo/redo history.
+- **Global Workspace Search** (`Cmd/Ctrl+Shift+F`) — full-text search across all `.md` files in the workspace. Multi-threaded Rust backend (`search_workspace` command) filters out hidden directories (`.git`, `node_modules`). Results grouped by file with keyword-highlighted snippets. Click any result to open the file and scroll the editor to the matching line.
+- **Daily Notes / Journaling** (`Alt+D`) — one-touch daily note creation. Generates `YYYY-MM-DD.md` with a heading template in the workspace root (or a user-configured directory). Opens the file at the last line ready to type.
+- **Search tab in Sidebar** — new "Search" activity alongside Explorer and Outline, with dedicated `SearchPanel.vue` component.
+- **Daily Notes folder setting** — configurable save directory for daily notes in the Settings modal.
+
+### Changed
+
+- **CSS architecture migrated to SCSS modules** — split `main.css` into `_variables.scss` (color tokens, font config, theme), `_mixins.scss` (layout helpers, scrollbar hiding, text truncation), and `main.scss` (entry point).
+- **Tailwind v4 utility classes porting** — replaced custom component classes in `App.vue`, `ExplorerPanel.vue`, `TabBar.vue`, and `TerminalTabBar.vue` with Tailwind utilities. Mapped app theme colors to Tailwind via `@theme` directive.
+
+### Dependencies
+
+- Added `sass` as a devDependency for Vite SCSS compilation.
+
 ## [1.5.0] — 2026-05-20
 
 ### Added

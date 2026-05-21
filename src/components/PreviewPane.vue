@@ -589,12 +589,15 @@ const isEmpty = computed(() => !props.source || props.source.trim() === "");
   margin-bottom: 0.2em;
 }
 
-.markdown-body li:has(> input[type="checkbox"]) {
+.markdown-body li.task-list-item {
+  list-style: none;
+}
+
+.markdown-body li.task-list-item > p {
   display: flex;
   align-items: flex-start;
   gap: 6px;
-  list-style: none;
-  cursor: pointer;
+  margin-bottom: 0;
 }
 
 .markdown-body input[type="checkbox"] {

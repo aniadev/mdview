@@ -12,10 +12,13 @@ import { headingPxToProgress, headingProgressToPx } from "../utils/scrollSync";
 import { useThemeStore } from "../stores/theme";
 import { useUiStore } from "../stores/ui";
 import { useI18n } from "../i18n";
+import { usePaletteStore } from "../stores/palette";
+import { wikilinkCompletion } from "../extensions/wikilinkCompletion";
 
 const themeStore = useThemeStore();
 const uiStore = useUiStore();
 const { t } = useI18n();
+const palette = usePaletteStore();
 
 const props = defineProps<{
   modelValue: string;
@@ -80,6 +83,7 @@ function build(initial: string): EditorView {
     markdown(),
     keymap.of([...searchKeymap]),
     highlightSelectionMatches(),
+    wikilinkCompletion(() => palette.files),
   ];
   const themeExt = themeStore.theme === "dark" ? [oneDark] : [];
   const state = EditorState.create({

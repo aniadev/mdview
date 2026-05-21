@@ -2,6 +2,27 @@
 
 All notable changes to mdview.
 
+## [1.7.0] — 2026-05-22
+
+### Added
+
+- **Wikilink `[[]]` autocomplete** — typing `[[` in the editor opens a fuzzy-matched suggestion list of all `.md` files in the workspace. Selecting an entry inserts a proper wikilink.
+- **Recent Files in Command Palette** — `Cmd/Ctrl+P` now shows recently opened files at the top before the full fuzzy list.
+- **Heading search in Command Palette** — prefix a query with `#` to search headings across all open and workspace files, jumping directly to the section.
+- **Open Terminal at path** — Explorer context menu entry opens an integrated terminal session pre-`cd`'d to any file's or folder's directory.
+- **Link click handling in Preview** — clicking relative links in the rendered preview opens the target `.md` file as a new tab (internal links) or launches external URLs in the system browser.
+
+### Changed
+
+- **UI component library migrated to shadcn/vue + Radix Vue** — `ContextMenu`, `Dialog`, `Input`, and `Tooltip` primitives replaced with Radix-backed shadcn components (`SD1-5`). Provides accessible keyboard navigation, focus trapping, and portal rendering out of the box.
+
+### Fixed
+
+- **Explorer right-click context menu** — context menu now opens reliably on any tree node. Root cause: `e.preventDefault()` in the tree node handler set `defaultPrevented = true` before the event reached the Radix `ContextMenuTrigger`, which guards on that flag and skipped opening. Removed the early `preventDefault()`; Radix handles it. Also removed a stale `v-if="fsui.ctxMenu.visible"` gate that unmounted `ContextMenuContent` between opens, preventing Radix from positioning it on the first click.
+- **Preview HMR reload on save** — excluded `*.md` files from Vite's file watcher so editing a markdown file no longer triggers a full page reload.
+- **Link navigation crash** — guarded against null navigation targets in the preview click handler.
+- **Checkbox list toggle** — fixed CSS selector mismatch for `markdown-it-task-lists` rendered HTML so checkboxes render and toggle correctly in both editor and preview.
+
 ## [1.6.0] — 2026-05-21
 
 ### Added

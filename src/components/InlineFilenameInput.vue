@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, nextTick } from "vue";
+import UiInput from "./ui/Input.vue";
 
 const props = defineProps<{
   initial?: string;
@@ -13,7 +14,7 @@ const emit = defineEmits<{
 }>();
 
 const value = ref(props.initial ?? "");
-const input = ref<HTMLInputElement | null>(null);
+const input = ref<InstanceType<typeof UiInput> | null>(null);
 const error = ref<string | null>(null);
 
 onMounted(async () => {
@@ -64,7 +65,7 @@ defineExpose({
 
 <template>
   <div class="inline-input-wrap" :style="{ paddingLeft: depth * 12 + 24 + 'px' }">
-    <input
+    <UiInput
       ref="input"
       v-model="value"
       class="inline-input"

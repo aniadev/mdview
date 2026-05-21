@@ -4,6 +4,7 @@ import MarkdownIt from "markdown-it";
 import { useUpdaterStore } from "../stores/updater";
 import { useI18n } from "../i18n";
 import Button from "./ui/Button.vue";
+import AppDialog from "./ui/Dialog.vue";
 
 const { t } = useI18n();
 
@@ -31,13 +32,12 @@ function formatBytes(n: number): string {
 </script>
 
 <template>
-  <Teleport to="body">
-    <div
-      v-if="updater.modalOpen"
-      class="update-overlay"
-      @click="updater.closeModal()"
-    >
-      <div class="update-modal" @click.stop>
+  <AppDialog
+    :open="updater.modalOpen"
+    class="w-[560px] max-w-full max-h-[80vh] overflow-hidden"
+    @update:open="v => { if (!v && updater.state !== 'downloading' && updater.state !== 'ready') updater.closeModal() }"
+  >
+      <div class="update-modal">
         <header class="update-modal-header">
           <div class="update-modal-title">
             {{ t('update.title', { name: 'mdview', version: `v${newVersion}` }) }}
@@ -95,22 +95,10 @@ function formatBytes(n: number): string {
           </template>
         </footer>
       </div>
-    </div>
-  </Teleport>
+  </AppDialog>
 </template>
 
 <style>
-.update-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.45);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 200;
-  padding: 24px;
-}
-
 .update-modal {
   width: 560px;
   max-width: 100%;

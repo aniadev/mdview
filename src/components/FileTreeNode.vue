@@ -64,7 +64,6 @@ async function onRowClick(e: MouseEvent) {
 
 function onContextMenu(e: MouseEvent) {
   e.preventDefault();
-  e.stopPropagation();
   fsui.openContextMenu(e, {
     path: props.node.path,
     is_dir: props.node.is_dir,

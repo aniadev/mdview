@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { cva, type VariantProps } from "class-variance-authority";
-import { cn } from "../../utils/cn";
+import { cn } from "@/utils/cn";
 
 const buttonVariants = cva(
   "inline-flex items-center justify-center gap-1.5 rounded font-semibold transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent disabled:pointer-events-none disabled:opacity-50 cursor-pointer select-none border border-transparent text-xs",

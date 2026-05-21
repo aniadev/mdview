@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount, ref } from 'vue';
+import { ContextMenuRoot, ContextMenuTrigger } from 'radix-vue';
 import { Icon } from '@iconify/vue';
 import { confirm } from '@tauri-apps/plugin-dialog';
 import { useWorkspaceStore } from '../stores/workspace';
@@ -13,6 +14,9 @@ import InlineFilenameInput from './InlineFilenameInput.vue';
 import TocPanel from './TocPanel.vue';
 import SearchPanel from './SearchPanel.vue';
 import Button from './ui/Button.vue';
+import CtxMenuContent from './ui/ContextMenu.vue';
+import CtxMenuItem from './ui/ContextMenuItem.vue';
+import CtxMenuSeparator from './ui/ContextMenuSeparator.vue';
 
 const { t } = useI18n();
 
@@ -29,16 +33,8 @@ function onTocNavigate(index: number) {
   ui.triggerNavigateHeading(index);
 }
 
-const rootCtxMenu = ref<{ visible: boolean; x: number; y: number; rootPath: string }>({
-  visible: false,
-  x: 0,
-  y: 0,
-  rootPath: '',
-});
-
 function onWindowClick() {
   if (fsui.ctxMenu.visible) fsui.closeContextMenu();
-  if (rootCtxMenu.value.visible) rootCtxMenu.value.visible = false;
 }
 
 function resolveTargetDir(): string | null {
@@ -185,15 +181,8 @@ async function onRootCreateDirCommit(rootPath: string, name: string) {
   }
 }
 
-function onRootCtxMenu(e: MouseEvent, rootPath: string) {
-  if (workspace.roots.length <= 1) return;
-  rootCtxMenu.value = { visible: true, x: e.clientX, y: e.clientY, rootPath };
-}
-
-function removeRootFromWs() {
-  const path = rootCtxMenu.value.rootPath;
-  rootCtxMenu.value = { visible: false, x: 0, y: 0, rootPath: '' };
-  workspace.removeRoot(path);
+function removeRootFromWs(rootPath: string) {
+  workspace.removeRoot(rootPath);
 }
 
 async function startRootCreate(rootPath: string) {
@@ -397,9 +386,13 @@ async function ctxPaste(targetDir: string) {
         <div v-if="workspace.loading" class="flex flex-col items-center justify-center p-4 text-[var(--text-muted)]" style="height: auto">
           <p class="m-0 text-xs">{{ t('explorer.loading') }}</p>
         </div>
-        <template v-else>
+        <ContextMenuRoot v-else @update:open="(v: boolean) => !v && fsui.closeContextMenu()">
+          <ContextMenuTrigger as-child>
+            <div>
           <section v-for="root in workspace.roots" :key="root.path" class="ws-root">
-            <div class="ws-root-header" @contextmenu.prevent="onRootCtxMenu($event, root.path)">
+            <ContextMenuRoot>
+              <ContextMenuTrigger as-child>
+                <div class="ws-root-header" @contextmenu.stop>
               <span class="ws-root-name" :title="root.path">{{ root.name }}</span>
               <span class="ws-root-actions">
                 <Button
@@ -440,7 +433,12 @@ async function ctxPaste(targetDir: string) {
                   <Icon icon="lucide:folder-plus" width="14" height="14" />
                 </Button>
               </span>
-            </div>
+                </div>
+              </ContextMenuTrigger>
+              <CtxMenuContent v-if="workspace.roots.length > 1">
+                <CtxMenuItem @click="removeRootFromWs(root.path)">{{ t('ctx.removeRoot') }}</CtxMenuItem>
+              </CtxMenuContent>
+            </ContextMenuRoot>
             <div v-if="root.loadError" class="ws-root-error" :title="root.path">
               {{ root.loadError }}
             </div>
@@ -474,43 +472,26 @@ async function ctxPaste(targetDir: string) {
           <div v-if="!workspace.hasAnyMd" class="flex flex-col items-center justify-center p-4 text-[var(--text-muted)]" style="height: auto">
             <p class="m-0 text-xs">{{ t('explorer.noMdFiles') }}</p>
           </div>
-        </template>
+            </div>
+          </ContextMenuTrigger>
+          <CtxMenuContent v-if="fsui.ctxMenu.visible">
+            <CtxMenuItem v-if="fsui.ctxMenu.isDir" @click="ctxNewFile">{{ t('ctx.newFile') }}</CtxMenuItem>
+            <CtxMenuItem v-if="fsui.ctxMenu.isDir" @click="ctxNewFolder">{{ t('ctx.newFolder') }}</CtxMenuItem>
+            <CtxMenuItem v-if="fsui.ctxMenu.isMdFile" @click="ctxRename">{{ t('ctx.rename') }}</CtxMenuItem>
+            <CtxMenuItem v-if="fsui.ctxMenu.isMdFile" @click="ctxDelete">{{ t('ctx.delete') }}</CtxMenuItem>
+            <CtxMenuSeparator />
+            <CtxMenuItem @click="ctxOpenTerminalHere">{{ t('ctx.openTerminalHere') }}</CtxMenuItem>
+            <CtxMenuSeparator />
+            <CtxMenuItem @click="ctxCopy">{{ t('ctx.copy') }}</CtxMenuItem>
+            <CtxMenuItem v-if="!fsui.ctxMenu.isDir" @click="ctxCut">{{ t('ctx.cut') }}</CtxMenuItem>
+            <template v-if="fsui.hasClipboard">
+              <CtxMenuSeparator />
+              <CtxMenuItem @click="ctxPaste(fsui.ctxMenu.isDir ? fsui.ctxMenu.targetPath : parentOf(fsui.ctxMenu.targetPath))">{{ t('ctx.paste') }}</CtxMenuItem>
+            </template>
+          </CtxMenuContent>
+        </ContextMenuRoot>
       </template>
     </div>
-
-    <Teleport to="body">
-      <div
-        v-if="fsui.ctxMenu.visible"
-        class="ctx-menu"
-        :style="{ left: fsui.ctxMenu.x + 'px', top: fsui.ctxMenu.y + 'px' }"
-        @click.stop
-      >
-        <button v-if="fsui.ctxMenu.isDir" class="ctx-item" @click="ctxNewFile">{{ t('ctx.newFile') }}</button>
-        <button v-if="fsui.ctxMenu.isDir" class="ctx-item" @click="ctxNewFolder">{{ t('ctx.newFolder') }}</button>
-        <button v-if="fsui.ctxMenu.isMdFile" class="ctx-item" @click="ctxRename">{{ t('ctx.rename') }}</button>
-        <button v-if="fsui.ctxMenu.isMdFile" class="ctx-item" @click="ctxDelete">{{ t('ctx.delete') }}</button>
-        <div class="ctx-separator"></div>
-        <button class="ctx-item" @click="ctxOpenTerminalHere">{{ t('ctx.openTerminalHere') }}</button>
-        <div class="ctx-separator"></div>
-        <button class="ctx-item" @click="ctxCopy">{{ t('ctx.copy') }}</button>
-        <button v-if="!fsui.ctxMenu.isDir" class="ctx-item" @click="ctxCut">{{ t('ctx.cut') }}</button>
-        <template v-if="fsui.hasClipboard">
-          <div class="ctx-separator"></div>
-          <button class="ctx-item" @click="ctxPaste(fsui.ctxMenu.isDir ? fsui.ctxMenu.targetPath : parentOf(fsui.ctxMenu.targetPath))">{{ t('ctx.paste') }}</button>
-        </template>
-      </div>
-    </Teleport>
-
-    <Teleport to="body">
-      <div
-        v-if="rootCtxMenu.visible"
-        class="ctx-menu"
-        :style="{ left: rootCtxMenu.x + 'px', top: rootCtxMenu.y + 'px' }"
-        @click.stop
-      >
-        <button class="ctx-item" @click="removeRootFromWs">{{ t('ctx.removeRoot') }}</button>
-      </div>
-    </Teleport>
   </div>
 </template>
 
@@ -600,39 +581,3 @@ async function ctxPaste(targetDir: string) {
 }
 </style>
 
-<!-- ctx-menu / ctx-item are Teleport targets — cannot be scoped -->
-<style>
-.ctx-menu {
-  position: fixed;
-  z-index: 1000;
-  background: var(--bg-sidebar);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  min-width: 160px;
-  padding: 4px 0;
-}
-
-.ctx-item {
-  display: block;
-  width: 100%;
-  text-align: left;
-  padding: 6px 14px;
-  background: transparent;
-  border: none;
-  border-radius: 0;
-  font-size: 12px;
-  color: var(--text);
-  cursor: pointer;
-
-  &:hover {
-    background: var(--bg-selected);
-  }
-}
-
-.ctx-separator {
-  height: 1px;
-  background: var(--border);
-  margin: 4px 0;
-}
-</style>

@@ -9,6 +9,7 @@ import { useUiStore } from "../stores/ui";
 import { useUpdaterStore } from "../stores/updater";
 import { useI18n } from "../i18n";
 import Button from "./ui/Button.vue";
+import AppDialog from "./ui/Dialog.vue";
 
 const ui = useUiStore();
 const updater = useUpdaterStore();
@@ -109,16 +110,11 @@ function onClose() {
 </script>
 
 <template>
-  <Teleport to="body">
-    <div
-      v-if="ui.settingsOpen"
-      class="settings-overlay fixed inset-0 bg-black/45 flex items-center justify-center z-[180] p-6"
-      @click="onClose"
-    >
-      <div
-        class="settings-modal w-[540px] max-w-full max-h-[80vh] bg-sidebar border border-border rounded-md shadow-2xl flex flex-col overflow-hidden"
-        @click.stop
-      >
+  <AppDialog
+    :open="ui.settingsOpen"
+    class="w-[540px] max-w-full max-h-[80vh] overflow-hidden"
+    @update:open="v => !v && onClose()"
+  >
         <header class="settings-header flex items-center justify-between px-5 py-3.5 border-b border-border">
           <h2 class="settings-title m-0 text-sm font-semibold text-text tracking-wide">{{ t('settings.title') }}</h2>
           <Button
@@ -241,9 +237,7 @@ function onClose() {
             </div>
           </section>
         </div>
-      </div>
-    </div>
-  </Teleport>
+  </AppDialog>
 </template>
 
 <style lang="scss" scoped>

@@ -177,7 +177,7 @@ async function render() {
   const raw = md.render(props.source ?? "");
   let checkboxCount = 0;
   const processedHtml = raw.replace(/<input\s+([^>]*?)type="checkbox"([^>]*?)>/g, (_match, pre, post) => {
-    let attrs = (pre + " " + post).replace(/\bdisabled\b/g, "").trim();
+    let attrs = (pre + " " + post).replace(/\s*disabled(?:\s*=\s*(?:"[^"]*"|'[^']*'))?\s*/gi, " ").trim();
     const idx = checkboxCount++;
     return `<input type="checkbox" ${attrs} data-checklist-idx="${idx}" style="cursor: pointer; position: relative; top: 1px;">`;
   });
@@ -386,6 +386,14 @@ function onCheckboxChange(e: Event) {
   }
 }
 
+function onPreviewClick(e: MouseEvent) {
+  const target = e.target as HTMLElement;
+  const anchor = target.closest("a");
+  if (anchor && anchor.href) {
+    e.preventDefault();
+  }
+}
+
 defineExpose({
   buildStandaloneHtml,
   exportForPrint,
@@ -404,7 +412,7 @@ const isEmpty = computed(() => !props.source || props.source.trim() === "");
         <Icon :icon="themeStore.previewTheme === 'dark' ? 'lucide:sun' : 'lucide:moon'" width="16" height="16" />
       </button>
     </div>
-    <div ref="root" class="preview-pane" :data-theme="themeStore.previewTheme" @scroll.passive="onUserScroll" @change="onCheckboxChange">
+    <div ref="root" class="preview-pane" :data-theme="themeStore.previewTheme" @scroll.passive="onUserScroll" @change="onCheckboxChange" @click="onPreviewClick">
       <div v-if="isEmpty" class="preview-empty">{{ t('preview.empty') }}</div>
       <div v-else class="markdown-body" v-html="html"></div>
     </div>

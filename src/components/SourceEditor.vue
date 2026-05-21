@@ -346,7 +346,7 @@ function toggleWrap() {
 function toggleChecklist(targetIdx: number, checked: boolean) {
   if (!view) return;
   const docText = view.state.doc.toString();
-  const checkboxRegex = /^(\s*[-*+]\s+\[)([ xX])(\])/gm;
+  const checkboxRegex = /^(\s*(?:[-*+]|\d+\.)\s+\[)([ xX])(\])/gm;
   let match;
   let count = 0;
   let foundMatch = null;

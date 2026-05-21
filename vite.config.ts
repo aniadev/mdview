@@ -33,8 +33,9 @@ export default defineConfig({
         }
       : undefined,
     watch: {
-      // 3. tell Vite to ignore watching `src-tauri`
-      ignored: ['**/src-tauri/**'],
+      // 3. tell Vite to ignore watching `src-tauri` and markdown files
+      // saves from write_text trigger HMR full reload otherwise
+      ignored: ['**/src-tauri/**', '**/*.md'],
     },
   },
 });

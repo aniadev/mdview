@@ -474,7 +474,7 @@ async function ctxPaste(targetDir: string) {
           </div>
             </div>
           </ContextMenuTrigger>
-          <CtxMenuContent v-if="fsui.ctxMenu.visible">
+          <CtxMenuContent>
             <CtxMenuItem v-if="fsui.ctxMenu.isDir" @click="ctxNewFile">{{ t('ctx.newFile') }}</CtxMenuItem>
             <CtxMenuItem v-if="fsui.ctxMenu.isDir" @click="ctxNewFolder">{{ t('ctx.newFolder') }}</CtxMenuItem>
             <CtxMenuItem v-if="fsui.ctxMenu.isMdFile" @click="ctxRename">{{ t('ctx.rename') }}</CtxMenuItem>

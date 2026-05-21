@@ -15,7 +15,8 @@ import { useThemeStore } from "../stores/theme";
 import { useUiStore } from "../stores/ui";
 import { useI18n } from "../i18n";
 import type { TocHeading } from "./TocPanel.vue";
-import { openPath } from "@tauri-apps/plugin-opener";
+import { openPath, openUrl } from "@tauri-apps/plugin-opener";
+import { useTabsStore } from "../stores/tabs";
 
 const { t } = useI18n();
 
@@ -38,6 +39,7 @@ const emit = defineEmits<{
 
 const themeStore = useThemeStore();
 const uiStore = useUiStore();
+const tabs = useTabsStore();
 
 const md = new MarkdownIt({
   html: true,
@@ -386,11 +388,26 @@ function onCheckboxChange(e: Event) {
   }
 }
 
-function onPreviewClick(e: MouseEvent) {
+async function onPreviewClick(e: MouseEvent) {
   const target = e.target as HTMLElement;
   const anchor = target.closest("a");
-  if (anchor && anchor.href) {
-    e.preventDefault();
+  if (!anchor) return;
+  e.preventDefault();
+
+  const href = anchor.getAttribute("href") ?? "";
+  if (!href || href.startsWith("#")) return;
+
+  if (/^https?:\/\//i.test(href)) {
+    const confirmed = window.confirm(`Open in browser?\n${href}`);
+    if (confirmed) await openUrl(href);
+    return;
+  }
+
+  if (!isAbsolute(href)) {
+    const baseDir = dirname(props.filePath);
+    const resolved = baseDir ? joinAndNormalize(baseDir, href) : href;
+    const filename = resolved.replace(/\\/g, "/").split("/").pop() ?? resolved;
+    await tabs.openFile(resolved, filename);
   }
 }
 

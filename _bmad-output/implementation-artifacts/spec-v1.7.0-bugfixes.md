@@ -62,7 +62,7 @@ context: []
 ## Tasks & Acceptance
 
 **Execution:**
-- [x] `src/components/PreviewPane.vue` — change `breaks: false` to `breaks: true` in MarkdownIt constructor at line ~44 — enables soft-break `<br>` rendering
+- [ ] `src/components/PreviewPane.vue` — change `breaks: false` to `breaks: true` in MarkdownIt constructor at line ~44 — enables soft-break `<br>` rendering
 - [x] `src/components/PreviewPane.vue` — add CSS in `<style>` block: `ul { list-style-type: disc }`, `ol { list-style-type: decimal }`, `ul ul { list-style-type: circle }`, `ul ul ul { list-style-type: square }` for nested lists — override Tailwind preflight reset
 - [x] `src/components/PreviewPane.vue` — add CSS in `<style>` block: `li:has(> input[type="checkbox"])` with `display: flex; align-items: flex-start; gap: 6px; list-style: none; cursor: pointer` and add `input[type="checkbox"]` rule with `margin-top: 3px; flex-shrink: 0; cursor: pointer` — checkbox alignment in task lists (flex suppresses `::marker` so `list-style: none` makes intent explicit)
 - [x] `src/stores/workspace.ts` — add `ensureDirExpanded(path: string)` method: find node by path, if found and `is_dir` and `!expanded`, lazy-load children if needed, set `expanded = true`. If `listDir` throws, set `error` and **return early** (do NOT set `expanded = true`) — idempotent expand, no-op on load failure

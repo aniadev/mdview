@@ -6,6 +6,7 @@ import { useWorkspaceStore } from '../stores/workspace';
 import { useTabsStore } from '../stores/tabs';
 import { useFsUiStore } from '../stores/fsui';
 import { useUiStore } from '../stores/ui';
+import { useTerminalStore } from '../stores/terminal';
 import { useI18n } from '../i18n';
 import FileTreeNode from './FileTreeNode.vue';
 import InlineFilenameInput from './InlineFilenameInput.vue';
@@ -19,6 +20,7 @@ const workspace = useWorkspaceStore();
 const tabs = useTabsStore();
 const fsui = useFsUiStore();
 const ui = useUiStore();
+const terminal = useTerminalStore();
 
 const rootInputRef = ref<InstanceType<typeof InlineFilenameInput> | null>(null);
 const rootDirInputRef = ref<InstanceType<typeof InlineFilenameInput> | null>(null);
@@ -127,6 +129,13 @@ async function ctxNewFolder() {
 async function ctxRename() {
   fsui.requestRename(fsui.ctxMenu.targetPath);
   fsui.closeContextMenu();
+}
+
+function ctxOpenTerminalHere() {
+  const targetDir = fsui.ctxMenu.isDir ? fsui.ctxMenu.targetPath : parentOf(fsui.ctxMenu.targetPath);
+  fsui.closeContextMenu();
+  ui.showBottomPanel();
+  terminal.createSession(targetDir);
 }
 
 async function ctxDelete() {
@@ -480,6 +489,8 @@ async function ctxPaste(targetDir: string) {
         <button v-if="fsui.ctxMenu.isDir" class="ctx-item" @click="ctxNewFolder">{{ t('ctx.newFolder') }}</button>
         <button v-if="fsui.ctxMenu.isMdFile" class="ctx-item" @click="ctxRename">{{ t('ctx.rename') }}</button>
         <button v-if="fsui.ctxMenu.isMdFile" class="ctx-item" @click="ctxDelete">{{ t('ctx.delete') }}</button>
+        <div class="ctx-separator"></div>
+        <button class="ctx-item" @click="ctxOpenTerminalHere">{{ t('ctx.openTerminalHere') }}</button>
         <div class="ctx-separator"></div>
         <button class="ctx-item" @click="ctxCopy">{{ t('ctx.copy') }}</button>
         <button v-if="!fsui.ctxMenu.isDir" class="ctx-item" @click="ctxCut">{{ t('ctx.cut') }}</button>

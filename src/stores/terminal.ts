@@ -6,6 +6,7 @@ export interface TerminalSession {
   ptyId: number | null;
   label: string;
   customLabel: string | null;
+  cwd?: string;
 }
 
 const MAX_LABEL_LEN = 30;
@@ -24,7 +25,7 @@ export const useTerminalStore = defineStore("terminal", () => {
     return (s.customLabel ?? s.label).slice(0, MAX_LABEL_LEN);
   }
 
-  function createSession(): TerminalSession {
+  function createSession(cwd?: string): TerminalSession {
     const uid = nextUid++;
     const label = `Terminal ${nextDefaultNum++}`;
     const session: TerminalSession = {
@@ -32,6 +33,7 @@ export const useTerminalStore = defineStore("terminal", () => {
       ptyId: null,
       label,
       customLabel: null,
+      cwd,
     };
     sessions.value.push(session);
     activeUid.value = uid;

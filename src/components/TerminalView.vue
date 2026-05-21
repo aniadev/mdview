@@ -73,7 +73,7 @@ function waitForWorkspace(timeoutMs: number): Promise<string | null> {
 
 async function spawn() {
   if (!term) return;
-  const cwd = workspace.rootPath ?? undefined;
+  const cwd = props.session.cwd ?? workspace.rootPath ?? undefined;
   const cols = term.cols || 80;
   const rows = term.rows || 24;
   try {

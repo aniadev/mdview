@@ -44,6 +44,10 @@ export const useUiStore = defineStore("ui", () => {
     bottomPanelVisible.value = !bottomPanelVisible.value;
   }
 
+  function showBottomPanel() {
+    bottomPanelVisible.value = true;
+  }
+
   function setBottomPanelHeight(h: number) {
     bottomPanelHeight.value = Math.max(120, Math.min(800, h));
   }
@@ -140,6 +144,7 @@ export const useUiStore = defineStore("ui", () => {
     tourSeen,
     toggleSidebar,
     toggleBottomPanel,
+    showBottomPanel,
     setBottomPanelHeight,
     setSidebarWidth,
     openSettings,

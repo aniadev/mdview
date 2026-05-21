@@ -36,6 +36,7 @@ const messages: Record<string, { en: string; vi: string }> = {
   'ctx.paste': { en: 'Paste', vi: 'Dán' },
   'ctx.pasteHere': { en: 'Paste here', vi: 'Dán vào đây' },
   'ctx.removeRoot': { en: 'Remove Folder from Workspace', vi: 'Xóa thư mục khỏi Workspace' },
+  'ctx.openTerminalHere': { en: 'Open Terminal Here', vi: 'Mở Terminal tại đây' },
 
   // --- Tabs ---
   'tab.close': { en: 'Close', vi: 'Đóng' },

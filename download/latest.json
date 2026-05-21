@@ -1,19 +1,19 @@
 {
-  "version": "1.7.0",
-  "notes": "## [1.7.0] — 2026-05-22\r\n\r\n### Added\r\n\r\n- **Wikilink `[[]]` autocomplete** — typing `[[` in the editor opens a fuzzy-matched suggestion list of all `.md` files in the workspace. Selecting an entry inserts a proper wikilink.\r\n- **Recent Files in Command Palette** — `Cmd/Ctrl+P` now shows recently opened files at the top before the full fuzzy list.\r\n- **Heading search in Command Palette** — prefix a query with `#` to search headings across all open and workspace files, jumping directly to the section.\r\n- **Open Terminal at path** — Explorer context menu entry opens an integrated terminal session pre-`cd`'d to any file's or folder's directory.\r\n- **Link click handling in Preview** — clicking relative links in the rendered preview opens the target `.md` file as a new tab (internal links) or launches external URLs in the system browser.\r\n\r\n### Changed\r\n\r\n- **UI component library migrated to shadcn/vue + Radix Vue** — `ContextMenu`, `Dialog`, `Input`, and `Tooltip` primitives replaced with Radix-backed shadcn components (`SD1-5`). Provides accessible keyboard navigation, focus trapping, and portal rendering out of the box.\r\n\r\n### Fixed\r\n\r\n- **Explorer right-click context menu** — context menu now opens reliably on any tree node. Root cause: `e.preventDefault()` in the tree node handler set `defaultPrevented = true` before the event reached the Radix `ContextMenuTrigger`, which guards on that flag and skipped opening. Removed the early `preventDefault()`; Radix handles it. Also removed a stale `v-if=\"fsui.ctxMenu.visible\"` gate that unmounted `ContextMenuContent` between opens, preventing Radix from positioning it on the first click.\r\n- **Preview HMR reload on save** — excluded `*.md` files from Vite's file watcher so editing a markdown file no longer triggers a full page reload.\r\n- **Link navigation crash** — guarded against null navigation targets in the preview click handler.\r\n- **Checkbox list toggle** — fixed CSS selector mismatch for `markdown-it-task-lists` rendered HTML so checkboxes render and toggle correctly in both editor and preview.",
-  "pub_date": "2026-05-21T17:53:46Z",
+  "version": "1.7.1",
+  "notes": "See [CHANGELOG.md](https://github.com/aniadev/mdview/blob/main/CHANGELOG.md) for the full release notes.",
+  "pub_date": "2026-05-21T18:51:38Z",
   "platforms": {
     "darwin-aarch64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRNXQwYkc0VUlnL3h3aDN6SU0vWTIyUlpodk5QSjVCNzYrbW1ZWk51VUxpRk5uSzNyT1QwTmhZaEw4ZGUrK01vWVRBU1FLcUUrL2ZLUzFPQUxQT25ZOWppa2MrcGo0VFFnPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc5Mzg1OTAzCWZpbGU6bWR2aWV3X3VuaXZlcnNhbC5hcHAudGFyLmd6ClgwWll4WXRCYTRZVkppVm1jZHp5aUlCYTVPVEdNRm1ubG9EL3Z1MzYwQzNhZkFsOHF2bjZpc3cvRVlaa0xKVlBsMG02ZXlzUTd4YVNRbnBlbGhjRUJRPT0K",
-      "url": "https://github.com/aniadev/mdview/releases/download/v1.7.0/mdview_universal.app.tar.gz"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRNXQwYkc0VUlnL3pMSmQ3YXhnUWcvdE9lKzB0Y1NjZm9zWEhQdVZsM3FWOVlFZ2VDNHpCQjQwYnRRUUFNRHFQQWVuVldQWm9xenBTMVJXQUJrZEh4czlUbmZhU3BjZ2c0PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc5Mzg5NDQ0CWZpbGU6bWR2aWV3X3VuaXZlcnNhbC5hcHAudGFyLmd6CnlLdWlxVG9rUUs2RnpYZnFzbmxUVG92R0tDRGpkeFR5NkdEUk80VFovckNOVm9iSVJTYUQvTTM2SmJOOTZlL3BRQTJhUUsxMS9oR2FzcmkrYlBnRkJBPT0K",
+      "url": "https://github.com/aniadev/mdview/releases/download/v1.7.1/mdview_universal.app.tar.gz"
     },
     "darwin-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRNXQwYkc0VUlnL3h3aDN6SU0vWTIyUlpodk5QSjVCNzYrbW1ZWk51VUxpRk5uSzNyT1QwTmhZaEw4ZGUrK01vWVRBU1FLcUUrL2ZLUzFPQUxQT25ZOWppa2MrcGo0VFFnPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc5Mzg1OTAzCWZpbGU6bWR2aWV3X3VuaXZlcnNhbC5hcHAudGFyLmd6ClgwWll4WXRCYTRZVkppVm1jZHp5aUlCYTVPVEdNRm1ubG9EL3Z1MzYwQzNhZkFsOHF2bjZpc3cvRVlaa0xKVlBsMG02ZXlzUTd4YVNRbnBlbGhjRUJRPT0K",
-      "url": "https://github.com/aniadev/mdview/releases/download/v1.7.0/mdview_universal.app.tar.gz"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRNXQwYkc0VUlnL3pMSmQ3YXhnUWcvdE9lKzB0Y1NjZm9zWEhQdVZsM3FWOVlFZ2VDNHpCQjQwYnRRUUFNRHFQQWVuVldQWm9xenBTMVJXQUJrZEh4czlUbmZhU3BjZ2c0PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc5Mzg5NDQ0CWZpbGU6bWR2aWV3X3VuaXZlcnNhbC5hcHAudGFyLmd6CnlLdWlxVG9rUUs2RnpYZnFzbmxUVG92R0tDRGpkeFR5NkdEUk80VFovckNOVm9iSVJTYUQvTTM2SmJOOTZlL3BRQTJhUUsxMS9oR2FzcmkrYlBnRkJBPT0K",
+      "url": "https://github.com/aniadev/mdview/releases/download/v1.7.1/mdview_universal.app.tar.gz"
     },
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRNXQwYkc0VUlnLzc2MGMyemV3UEFIVS91UlNBajFoSGVQTmRUZjBJMnpoV045S1dBZXdtUmxQNTFIMFliZ0lJTWNBenlFK1A1MlEzNUlzNU1HUHE4ZzhBejdpaWdhUWcwPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc5Mzg1OTU0CWZpbGU6bWR2aWV3XzEuNy4wX3g2NC1zZXR1cC5leGUKUU5rSGtGNXZBY0hnUllVU1FYelFGRjNCd0RKZGp5R3ZIN1dVWHJEeXFCbDlxczExdS9kcDlCUmJVSWF1WVR6cHNiYmxvOFpORDM4VzZOeGt4NlFSQmc9PQo=",
-      "url": "https://github.com/aniadev/mdview/releases/download/v1.7.0/mdview_1.7.0_x64-setup.exe"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRNXQwYkc0VUlnL3hhZHNubE9NbnpaY01rcWloZytCcGpOTTdnN05ra3BxYXgzNXFMUy9oSjRqYXowY3ErM1BpSG5WbmZxVDZOZEx5TU1la3pGNGpRWGF6OWpYMy9yTncwPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc5Mzg5NDA0CWZpbGU6bWR2aWV3XzEuNy4xX3g2NC1zZXR1cC5leGUKeGRtbzBnUlU3bDFLaFczUDNMVTdmMWhZdkR2SzgyWEl1NFlJZ2JlKzlOaXdXMlBEOUFjaStHN3Z2QmlwMkRGYk9DSVdVa0ZWYTZEUitKSTdrZGhvQ1E9PQo=",
+      "url": "https://github.com/aniadev/mdview/releases/download/v1.7.1/mdview_1.7.1_x64-setup.exe"
     }
   }
 }

@@ -1,19 +1,19 @@
 {
-  "version": "1.7.1",
-  "notes": "See [CHANGELOG.md](https://github.com/aniadev/mdview/blob/main/CHANGELOG.md) for the full release notes.",
-  "pub_date": "2026-05-21T18:51:38Z",
+  "version": "1.8.0",
+  "notes": "## [1.8.0] — 2026-05-22\r\n\r\n### Added\r\n\r\n- **D3 Force-Directed Graph View** — Renders workspace markdown files and internal links as an interactive network graph using D3 force simulation. Includes a sidebar \"Graph\" tab as well as a full editor-pane tab view with zoom, pan, and node dragging. Clicking on any graph node opens that file and automatically expands all its parent directories in the Explorer tree structure.\r\n- **Backlinks Feature** — Fully implemented backlink discovery with backend Rust logic mapping document links. Adds a reactive Backlinks panel in the sidebar to display and navigate inline paths of all files referencing the active note, integrated with English and Vietnamese translation keys.",
+  "pub_date": "2026-05-22T07:04:14Z",
   "platforms": {
     "darwin-aarch64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRNXQwYkc0VUlnL3pMSmQ3YXhnUWcvdE9lKzB0Y1NjZm9zWEhQdVZsM3FWOVlFZ2VDNHpCQjQwYnRRUUFNRHFQQWVuVldQWm9xenBTMVJXQUJrZEh4czlUbmZhU3BjZ2c0PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc5Mzg5NDQ0CWZpbGU6bWR2aWV3X3VuaXZlcnNhbC5hcHAudGFyLmd6CnlLdWlxVG9rUUs2RnpYZnFzbmxUVG92R0tDRGpkeFR5NkdEUk80VFovckNOVm9iSVJTYUQvTTM2SmJOOTZlL3BRQTJhUUsxMS9oR2FzcmkrYlBnRkJBPT0K",
-      "url": "https://github.com/aniadev/mdview/releases/download/v1.7.1/mdview_universal.app.tar.gz"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRNXQwYkc0VUlnLzFjbU5GdUZTWHRjcldTWkJ6Z3ZSeWcva0dYdStITkVKTzFxZlMzeHFrbDdSaWxoQ3VUSHE1cm1HYTVtMUZNOUpmeFJ4cXJkdmV3SGt5YytKei9hQ0E0PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc5NDMzMjc1CWZpbGU6bWR2aWV3X3VuaXZlcnNhbC5hcHAudGFyLmd6Cmo4TGpXSG5GWEUwdGt3RGR5VTg2QXVZMm94dDEzT0pHUHdHblFibWNVamJOZkNXK2ZPamhQU2FDYmRCNjFYcjV2S2NybGx6NDFWZDBmVVNsVEFFQUJnPT0K",
+      "url": "https://github.com/aniadev/mdview/releases/download/v1.8.0/mdview_universal.app.tar.gz"
     },
     "darwin-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRNXQwYkc0VUlnL3pMSmQ3YXhnUWcvdE9lKzB0Y1NjZm9zWEhQdVZsM3FWOVlFZ2VDNHpCQjQwYnRRUUFNRHFQQWVuVldQWm9xenBTMVJXQUJrZEh4czlUbmZhU3BjZ2c0PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc5Mzg5NDQ0CWZpbGU6bWR2aWV3X3VuaXZlcnNhbC5hcHAudGFyLmd6CnlLdWlxVG9rUUs2RnpYZnFzbmxUVG92R0tDRGpkeFR5NkdEUk80VFovckNOVm9iSVJTYUQvTTM2SmJOOTZlL3BRQTJhUUsxMS9oR2FzcmkrYlBnRkJBPT0K",
-      "url": "https://github.com/aniadev/mdview/releases/download/v1.7.1/mdview_universal.app.tar.gz"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRNXQwYkc0VUlnLzFjbU5GdUZTWHRjcldTWkJ6Z3ZSeWcva0dYdStITkVKTzFxZlMzeHFrbDdSaWxoQ3VUSHE1cm1HYTVtMUZNOUpmeFJ4cXJkdmV3SGt5YytKei9hQ0E0PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc5NDMzMjc1CWZpbGU6bWR2aWV3X3VuaXZlcnNhbC5hcHAudGFyLmd6Cmo4TGpXSG5GWEUwdGt3RGR5VTg2QXVZMm94dDEzT0pHUHdHblFibWNVamJOZkNXK2ZPamhQU2FDYmRCNjFYcjV2S2NybGx6NDFWZDBmVVNsVEFFQUJnPT0K",
+      "url": "https://github.com/aniadev/mdview/releases/download/v1.8.0/mdview_universal.app.tar.gz"
     },
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRNXQwYkc0VUlnL3hhZHNubE9NbnpaY01rcWloZytCcGpOTTdnN05ra3BxYXgzNXFMUy9oSjRqYXowY3ErM1BpSG5WbmZxVDZOZEx5TU1la3pGNGpRWGF6OWpYMy9yTncwPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc5Mzg5NDA0CWZpbGU6bWR2aWV3XzEuNy4xX3g2NC1zZXR1cC5leGUKeGRtbzBnUlU3bDFLaFczUDNMVTdmMWhZdkR2SzgyWEl1NFlJZ2JlKzlOaXdXMlBEOUFjaStHN3Z2QmlwMkRGYk9DSVdVa0ZWYTZEUitKSTdrZGhvQ1E9PQo=",
-      "url": "https://github.com/aniadev/mdview/releases/download/v1.7.1/mdview_1.7.1_x64-setup.exe"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRNXQwYkc0VUlnLzU4dUs3WGtEMmlSa0tQa2U5SmNObGo0QWp5YlJkb0NMNjNqK3BIV0J6MTBNcHcvMXdhY1h5aGxJTTJOUEhLeDR3d0hwZXNhYk5LK0N0Z3dySjRYZFE4PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc5NDMzMzcwCWZpbGU6bWR2aWV3XzEuOC4wX3g2NC1zZXR1cC5leGUKN3JjaHoxMzVkcGFBR2YyaVFZQ1E2RVBCL0drQm5KT25qWWZnejRLUDBjOURRSUUyd0s1YTk2dkRoZXdrVlFGRkNhR0xHdzBjbzZMbUpZczhjQlJCQnc9PQo=",
+      "url": "https://github.com/aniadev/mdview/releases/download/v1.8.0/mdview_1.8.0_x64-setup.exe"
     }
   }
 }

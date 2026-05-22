@@ -708,7 +708,7 @@ fn build_graph_impl(files: Vec<PathBuf>) -> LinkGraph {
     }
 
     let mut nodes: Vec<GraphNode> = node_map.into_values().collect();
-    nodes.sort_by(|a, b| a.label.to_lowercase().cmp(&b.label.to_lowercase()));
+    nodes.sort_by_key(|a| a.label.to_lowercase());
 
     LinkGraph { nodes, edges }
 }

@@ -2,6 +2,13 @@
 
 All notable changes to mdview.
 
+## [1.8.0] — 2026-05-22
+
+### Added
+
+- **D3 Force-Directed Graph View** — Renders workspace markdown files and internal links as an interactive network graph using D3 force simulation. Includes a sidebar "Graph" tab as well as a full editor-pane tab view with zoom, pan, and node dragging. Clicking on any graph node opens that file and automatically expands all its parent directories in the Explorer tree structure.
+- **Backlinks Feature** — Fully implemented backlink discovery with backend Rust logic mapping document links. Adds a reactive Backlinks panel in the sidebar to display and navigate inline paths of all files referencing the active note, integrated with English and Vietnamese translation keys.
+
 ## [1.7.1] — 2026-05-22
 
 ### Fixed

@@ -3,11 +3,13 @@ import { ref, onMounted, onBeforeUnmount, watch, computed } from "vue";
 import { Icon } from "@iconify/vue";
 import { useGraphStore, type GraphNode, type LinkGraph } from "../stores/graph";
 import { useTabsStore } from "../stores/tabs";
+import { useWorkspaceStore } from "../stores/workspace";
 import { useUiStore } from "../stores/ui";
 import { useI18n } from "../i18n";
 
 const graph = useGraphStore();
 const tabs = useTabsStore();
+const workspace = useWorkspaceStore();
 const ui = useUiStore();
 const { t } = useI18n();
 
@@ -173,9 +175,10 @@ function render() {
       nodeSel.attr("opacity", 1);
       edgeSel.attr("stroke-opacity", 0.4);
     })
-    .on("click", function (_evt, d) {
+    .on("click", async function (_evt, d) {
       if (!d.exists) return;
-      tabs.openFile(d.path, d.label);
+      await workspace.expandPathToNode(d.path);
+      void tabs.openFile(d.path, d.label);
     });
 
   const drag = d3

@@ -13,7 +13,6 @@ import FileTreeNode from './FileTreeNode.vue';
 import InlineFilenameInput from './InlineFilenameInput.vue';
 import TocPanel from './TocPanel.vue';
 import SearchPanel from './SearchPanel.vue';
-import GraphPanel from './GraphPanel.vue';
 import Button from './ui/Button.vue';
 import CtxMenuContent from './ui/ContextMenu.vue';
 import CtxMenuItem from './ui/ContextMenuItem.vue';
@@ -330,9 +329,9 @@ async function ctxPaste(targetDir: string) {
       </button>
       <button
         class="activity-btn"
-        :class="{ active: ui.sidebarView === 'graph' }"
+        :class="{ active: tabs.activePath === 'app://graph' }"
         :title="t('explorer.graph')"
-        @click="ui.setSidebarView('graph')"
+        @click="tabs.openFile('app://graph', t('explorer.graph'))"
       >
         <Icon icon="lucide:network" width="14" height="14" />
       </button>
@@ -389,10 +388,6 @@ async function ctxPaste(targetDir: string) {
 
       <SearchPanel
         v-else-if="ui.sidebarView === 'search'"
-      />
-
-      <GraphPanel
-        v-else-if="ui.sidebarView === 'graph'"
       />
 
       <template v-else-if="ui.sidebarView === 'explorer'">

@@ -166,6 +166,14 @@ const messages: Record<string, { en: string; vi: string }> = {
   'graph.fullGraph': { en: 'Full graph (workspace)', vi: 'Đồ thị toàn workspace' },
   'graph.refresh': { en: 'Rebuild graph', vi: 'Dựng lại đồ thị' },
   'graph.tooLarge': { en: 'Graph too large (>2000 nodes) — local view only.', vi: 'Đồ thị quá lớn (>2000 node) — chỉ hiển thị cục bộ.' },
+
+  // --- Backlinks (v1.8.0) ---
+  'backlinks.title': { en: 'Backlinks', vi: 'Liên kết ngược' },
+  'backlinks.empty': { en: 'No backlinks. Other notes will appear here when they link to this file.', vi: 'Chưa có liên kết ngược. Các ghi chú khác sẽ xuất hiện ở đây khi link đến file này.' },
+  'backlinks.loading': { en: 'Finding backlinks…', vi: 'Đang tìm liên kết ngược…' },
+  'backlinks.linkedFrom': { en: 'Linked from {count} note(s)', vi: 'Được liên kết từ {count} ghi chú' },
+  'backlinks.wikilink': { en: 'Wiki link', vi: 'Wiki link' },
+  'backlinks.mdLink': { en: 'Markdown link', vi: 'Markdown link' },
 };
 
 const currentLocale: Ref<Locale> = ref('en');

@@ -740,6 +740,138 @@ fn build_link_graph(
     Ok(graph)
 }
 
+// ─── Backlinks (v1.8.0 S-BL1) ──────────────────────────────────────────────
+
+#[derive(Serialize, Clone, Debug)]
+pub struct BacklinkEntry {
+    pub from_file: String,
+    pub from_label: String,
+    pub link_type: String,
+    pub line_number: usize,
+    pub context: String,
+}
+
+fn basename_index_from_graph(graph: &LinkGraph) -> HashMap<String, PathBuf> {
+    let mut idx = HashMap::new();
+    for node in &graph.nodes {
+        if !node.exists {
+            continue;
+        }
+        let pb = PathBuf::from(&node.path);
+        if let Some(name) = pb.file_name() {
+            idx.insert(name.to_string_lossy().to_lowercase(), pb);
+        }
+    }
+    idx
+}
+
+fn build_backlink_entries(
+    source_paths: &[String],
+    target_key: &str,
+    basename_index: &HashMap<String, PathBuf>,
+) -> Vec<BacklinkEntry> {
+    let mut out = Vec::new();
+    for src in source_paths {
+        let src_path = PathBuf::from(src);
+        let content = match std::fs::read_to_string(&src_path) {
+            Ok(s) => s,
+            Err(e) => {
+                eprintln!("[backlinks] read {:?} failed: {}", src_path, e);
+                continue;
+            }
+        };
+        let src_dir = src_path.parent().unwrap_or(Path::new(""));
+        let lines: Vec<&str> = content.lines().collect();
+        if lines.is_empty() {
+            continue;
+        }
+        let label = label_for_path(&src_path);
+        for link in parse_links_in_text(&content) {
+            let (resolved, kind_str) = match link.kind {
+                LinkKind::Wiki => (
+                    resolve_wiki_target(&link.target, src_dir, basename_index),
+                    "wiki",
+                ),
+                LinkKind::Md => (resolve_md_target(&link.target, src_dir), "md"),
+            };
+            let Some(resolved_path) = resolved else { continue };
+            let resolved_key = norm_slashes(&resolved_path.to_string_lossy());
+            if resolved_key != target_key {
+                continue;
+            }
+            // link.line is 1-based and bounded by content.lines().count() == lines.len().
+            let line_idx = link.line.saturating_sub(1).min(lines.len() - 1);
+            let last = lines.len() - 1;
+            let start = line_idx.saturating_sub(1);
+            let end = (line_idx + 1).min(last);
+            let start = start.min(end);
+            let snippet = lines[start..=end]
+                .iter()
+                .map(|l| l.trim_end())
+                .collect::<Vec<_>>()
+                .join("\n");
+            out.push(BacklinkEntry {
+                from_file: norm_slashes(&src_path.to_string_lossy()),
+                from_label: label.clone(),
+                link_type: kind_str.into(),
+                line_number: link.line,
+                context: snippet,
+            });
+        }
+    }
+    out
+}
+
+#[tauri::command]
+fn find_backlinks(
+    file_path: String,
+    roots: Vec<String>,
+    state: State<'_, LinkGraphCache>,
+) -> Result<Vec<BacklinkEntry>, String> {
+    if file_path.is_empty() || roots.is_empty() {
+        return Ok(Vec::new());
+    }
+    let target_pb = PathBuf::from(&file_path);
+    let target_canon = target_pb
+        .canonicalize()
+        .unwrap_or_else(|_| target_pb.clone());
+    let target_key = norm_slashes(&target_canon.to_string_lossy());
+
+    let key = roots_signature(&roots);
+    let cached: Option<LinkGraph> = {
+        let guard = state.0.lock().map_err(|e| e.to_string())?;
+        guard
+            .as_ref()
+            .filter(|c| c.roots_key == key)
+            .map(|c| c.graph.clone())
+    };
+    let graph = match cached {
+        Some(g) => g,
+        None => {
+            let files = collect_md_files(&roots);
+            let g = build_graph_impl(files);
+            let mut guard = state.0.lock().map_err(|e| e.to_string())?;
+            *guard = Some(CachedGraph {
+                roots_key: key,
+                graph: g.clone(),
+            });
+            g
+        }
+    };
+
+    let mut sources: Vec<String> = Vec::new();
+    let mut seen: HashSet<String> = HashSet::new();
+    for edge in &graph.edges {
+        if edge.target == target_key && seen.insert(edge.source.clone()) {
+            sources.push(edge.source.clone());
+        }
+    }
+    sources.sort();
+
+    let basename_index = basename_index_from_graph(&graph);
+    Ok(build_backlink_entries(&sources, &target_key, &basename_index))
+}
+
 // ─── .code-workspace parsing (v1.1) ────────────────────────────────────────
 
 
@@ -1200,6 +1332,7 @@ pub fn run() {
             copy_path,
             search_workspace,
             build_link_graph,
+            find_backlinks,
         ])
 
         .build(tauri::generate_context!())
@@ -1324,5 +1457,172 @@ mod tests {
         let links = parse_links_in_text(text);
         assert_eq!(links.len(), 1);
         assert_eq!(links[0].line, 2);
+    }
+
+    use std::io::Write;
+
+    fn write_tmp_file(dir: &Path, name: &str, content: &str) -> PathBuf {
+        let p = dir.join(name);
+        let mut f = std::fs::File::create(&p).unwrap();
+        f.write_all(content.as_bytes()).unwrap();
+        p.canonicalize().unwrap()
+    }
+
+    fn mk_index(target: &Path) -> HashMap<String, PathBuf> {
+        let mut idx = HashMap::new();
+        if let Some(name) = target.file_name() {
+            idx.insert(name.to_string_lossy().to_lowercase(), target.to_path_buf());
+        }
+        idx
+    }
+
+    #[test]
+    fn find_backlinks_happy_path_wiki_and_md() {
+        let tmp = std::env::temp_dir().join(format!("mdview_bl_test_{}", std::process::id()));
+        std::fs::create_dir_all(&tmp).unwrap();
+        let target = write_tmp_file(&tmp, "B.md", "# B\nbody\n");
+        let target_key = norm_slashes(&target.to_string_lossy());
+        write_tmp_file(&tmp, "A.md", "intro line\nrefer to [[B]]\noutro\n");
+        write_tmp_file(
+            &tmp,
+            "C.md",
+            "header\nsee [target](./B.md) for context\nfinal\n",
+        );
+
+        let idx = mk_index(&target);
+        let entries = build_backlink_entries(
+            &[
+                norm_slashes(&tmp.join("A.md").canonicalize().unwrap().to_string_lossy()),
+                norm_slashes(&tmp.join("C.md").canonicalize().unwrap().to_string_lossy()),
+            ],
+            &target_key,
+            &idx,
+        );
+        assert_eq!(entries.len(), 2);
+        let kinds: Vec<&str> = entries.iter().map(|e| e.link_type.as_str()).collect();
+        assert!(kinds.contains(&"wiki"));
+        assert!(kinds.contains(&"md"));
+        for e in &entries {
+            assert_eq!(e.line_number, 2);
+            assert!(e.context.contains(" "));
+            assert!(e.context.lines().count() <= 3);
+        }
+        std::fs::remove_dir_all(&tmp).ok();
+    }
+
+    #[test]
+    fn find_backlinks_no_backlinks_returns_empty() {
+        let tmp =
+            std::env::temp_dir().join(format!("mdview_bl_test_empty_{}", std::process::id()));
+        std::fs::create_dir_all(&tmp).unwrap();
+        let target = write_tmp_file(&tmp, "Lonely.md", "no inbound\n");
+        let target_key = norm_slashes(&target.to_string_lossy());
+        write_tmp_file(&tmp, "Other.md", "no links here\n");
+
+        let idx = mk_index(&target);
+        let entries = build_backlink_entries(
+            &[norm_slashes(
+                &tmp.join("Other.md")
+                    .canonicalize()
+                    .unwrap()
+                    .to_string_lossy(),
+            )],
+            &target_key,
+            &idx,
+        );
+        assert!(entries.is_empty());
+        std::fs::remove_dir_all(&tmp).ok();
+    }
+
+    #[test]
+    fn find_backlinks_skips_missing_source_file() {
+        let tmp =
+            std::env::temp_dir().join(format!("mdview_bl_test_missing_{}", std::process::id()));
+        std::fs::create_dir_all(&tmp).unwrap();
+        let target = write_tmp_file(&tmp, "T.md", "x\n");
+        let target_key = norm_slashes(&target.to_string_lossy());
+        let bogus = norm_slashes(&tmp.join("does-not-exist.md").to_string_lossy());
+
+        let idx = mk_index(&target);
+        let entries = build_backlink_entries(&[bogus], &target_key, &idx);
+        assert!(entries.is_empty());
+        std::fs::remove_dir_all(&tmp).ok();
+    }
+
+    #[test]
+    fn find_backlinks_context_snippet_three_line_window() {
+        let tmp =
+            std::env::temp_dir().join(format!("mdview_bl_test_ctx_{}", std::process::id()));
+        std::fs::create_dir_all(&tmp).unwrap();
+        let target = write_tmp_file(&tmp, "T2.md", "x\n");
+        let target_key = norm_slashes(&target.to_string_lossy());
+        let src = write_tmp_file(
+            &tmp,
+            "Src.md",
+            "before context\nthis line mentions [[T2]]\nafter context\nunrelated\n",
+        );
+        let idx = mk_index(&target);
+        let entries =
+            build_backlink_entries(&[norm_slashes(&src.to_string_lossy())], &target_key, &idx);
+        assert_eq!(entries.len(), 1);
+        let ctx = &entries[0].context;
+        assert!(ctx.contains("before context"));
+        assert!(ctx.contains("[[T2]]"));
+        assert!(ctx.contains("after context"));
+        assert!(!ctx.contains("unrelated"));
+        std::fs::remove_dir_all(&tmp).ok();
+    }
+
+    #[test]
+    fn find_backlinks_normalizes_backslash_path() {
+        let tmp =
+            std::env::temp_dir().join(format!("mdview_bl_test_winpath_{}", std::process::id()));
+        std::fs::create_dir_all(&tmp).unwrap();
+        let target = write_tmp_file(&tmp, "Win.md", "content\n");
+        let target_key = norm_slashes(&target.to_string_lossy());
+        // simulate a Windows-style path string (backslashes) for the target — emulating what
+        // the frontend would pass before any normalization
+        let win_style = target.to_string_lossy().replace('/', "\\");
+        let normalized = norm_slashes(&win_style);
+        assert_eq!(normalized, target_key);
+        // and confirm a backlink lookup with this normalized key still matches.
+        let src = write_tmp_file(&tmp, "Src.md", "hi\nlink [[Win]]\nbye\n");
+        let idx = mk_index(&target);
+        let entries =
+            build_backlink_entries(&[norm_slashes(&src.to_string_lossy())], &normalized, &idx);
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].link_type, "wiki");
+        std::fs::remove_dir_all(&tmp).ok();
+    }
+
+    #[test]
+    fn find_backlinks_basename_collision_uses_full_graph_index() {
+        // Two files share basename "B.md" in different dirs. When backlinks queried for
+        // dirA/B.md, a source linking [[B]] resolves via basename_index — the lookup
+        // must use the *workspace-wide* index so a link to "dirB/B.md" doesn't get
+        // mis-attributed as a backlink to "dirA/B.md".
+        let tmp = std::env::temp_dir()
+            .join(format!("mdview_bl_test_collision_{}", std::process::id()));
+        std::fs::create_dir_all(tmp.join("a")).unwrap();
+        std::fs::create_dir_all(tmp.join("b")).unwrap();
+        let target_a = write_tmp_file(&tmp.join("a"), "B.md", "A side\n");
+        let target_b = write_tmp_file(&tmp.join("b"), "B.md", "B side\n");
+        let src = write_tmp_file(&tmp, "Src.md", "x\nlink [[B]]\ny\n");
+
+        // Full index has both — last-wins map mirrors build_graph_impl behavior.
+        let mut idx: HashMap<String, PathBuf> = HashMap::new();
+        idx.insert("b.md".to_string(), target_a.clone());
+        // overwrite to simulate "other" winning
+        idx.insert("b.md".to_string(), target_b.clone());
+
+        let target_a_key = norm_slashes(&target_a.to_string_lossy());
+        let entries = build_backlink_entries(
+            &[norm_slashes(&src.to_string_lossy())],
+            &target_a_key,
+            &idx,
+        );
+        // Resolves to target_b, NOT target_a — so backlink list for target_a is empty.
+        assert!(entries.is_empty());
+        std::fs::remove_dir_all(&tmp).ok();
     }
 }

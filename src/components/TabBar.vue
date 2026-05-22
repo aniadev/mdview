@@ -124,6 +124,7 @@ onBeforeUnmount(() => {
         @drop="onDrop($event, index)"
         @dragend="onDragEnd"
       >
+        <Icon v-if="tab.path === 'app://graph'" icon="lucide:network" width="12" height="12" class="tab-icon shrink-0" />
         <span class="tab-name">{{ tab.name }}</span>
         <span class="tab-dirty" v-if="tabs.isDirty(tab)">●</span>
         <button
@@ -318,5 +319,36 @@ onBeforeUnmount(() => {
   gap: 2px;
   padding: 0 4px;
   flex-shrink: 0;
+}
+</style>
+
+<style>
+/* Unscoped Styles for teleported context menu */
+.ctx-menu {
+  position: fixed;
+  background: var(--bg-sidebar);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 4px 0;
+  min-width: 120px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+}
+
+.ctx-item {
+  background: transparent;
+  border: none;
+  color: var(--text);
+  padding: 6px 12px;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+  width: 100%;
+}
+
+.ctx-item:hover {
+  background: var(--bg-hover);
 }
 </style>

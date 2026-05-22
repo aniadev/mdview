@@ -329,6 +329,14 @@ async function ctxPaste(targetDir: string) {
       </button>
       <button
         class="activity-btn"
+        :class="{ active: tabs.activePath === 'app://graph' }"
+        :title="t('explorer.graph')"
+        @click="tabs.openFile('app://graph', t('explorer.graph'))"
+      >
+        <Icon icon="lucide:network" width="14" height="14" />
+      </button>
+      <button
+        class="activity-btn"
         :class="{ active: ui.bottomPanelVisible }"
         :title="t('terminal.toggle')"
         @click="ui.toggleBottomPanel()"

@@ -31,13 +31,27 @@ export const useTabsStore = defineStore("tabs", () => {
   );
 
   async function openFile(path: string, name: string) {
-    const rIdx = recentPaths.value.indexOf(path);
-    if (rIdx !== -1) recentPaths.value.splice(rIdx, 1);
-    recentPaths.value.unshift(path);
-    if (recentPaths.value.length > 20) recentPaths.value.pop();
+    if (!path.startsWith("app://")) {
+      const rIdx = recentPaths.value.indexOf(path);
+      if (rIdx !== -1) recentPaths.value.splice(rIdx, 1);
+      recentPaths.value.unshift(path);
+      if (recentPaths.value.length > 20) recentPaths.value.pop();
+    }
 
     const existing = tabs.value.find((t) => t.path === path);
     if (existing) {
+      activePath.value = path;
+      return;
+    }
+    if (path.startsWith("app://")) {
+      tabs.value.push({
+        path,
+        name,
+        content: "",
+        savedContent: "",
+        loading: false,
+        loadError: null,
+      });
       activePath.value = path;
       return;
     }
@@ -73,6 +87,7 @@ export const useTabsStore = defineStore("tabs", () => {
   async function saveTab(path: string): Promise<boolean> {
     const tab = tabs.value.find((t) => t.path === path);
     if (!tab || tab.loading || tab.loadError) return false;
+    if (tab.path.startsWith("app://")) return true;
     if (!isDirty(tab)) return true;
     try {
       await invoke("write_text", { path: tab.path, contents: tab.content });

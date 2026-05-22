@@ -17,6 +17,7 @@ import { useI18n } from "../i18n";
 import type { TocHeading } from "./TocPanel.vue";
 import { openPath, openUrl } from "@tauri-apps/plugin-opener";
 import { useTabsStore } from "../stores/tabs";
+import BacklinksPanel from "./BacklinksPanel.vue";
 
 const { t } = useI18n();
 
@@ -431,7 +432,10 @@ const isEmpty = computed(() => !props.source || props.source.trim() === "");
     </div>
     <div ref="root" class="preview-pane" :data-theme="themeStore.previewTheme" @scroll.passive="onUserScroll" @change="onCheckboxChange" @click="onPreviewClick">
       <div v-if="isEmpty" class="preview-empty">{{ t('preview.empty') }}</div>
-      <div v-else class="markdown-body" v-html="html"></div>
+      <template v-else>
+        <div class="markdown-body" v-html="html"></div>
+        <BacklinksPanel v-if="props.filePath" :file-path="props.filePath" />
+      </template>
     </div>
   </div>
 </template>

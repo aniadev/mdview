@@ -156,6 +156,24 @@ const messages: Record<string, { en: string; vi: string }> = {
   'settings.dailyNotesFolder': { en: 'Daily Notes Folder Path', vi: 'Đưòng dẫn Thư mục Daily Notes' },
   'settings.dailyNotesFolderDesc': { en: 'Leave empty for first workspace root directory', vi: 'Để trống để tạo tại thư mục root đầu tiên của Workspace' },
   'settings.dailyNotesHeader': { en: 'Daily Notes & Journaling', vi: 'Nhật ký Hàng ngày' },
+
+  // --- Graph View (v1.8.0) ---
+  'explorer.graph': { en: 'Graph View', vi: 'Đồ thị liên kết' },
+  'graph.empty': { en: 'No wikilinks found. Start by adding [[links]] in your notes.', vi: 'Chưa có liên kết. Thêm [[link]] vào ghi chú để bắt đầu.' },
+  'graph.loading': { en: 'Building graph…', vi: 'Đang dựng đồ thị…' },
+  'graph.search': { en: 'Filter nodes by name…', vi: 'Lọc node theo tên…' },
+  'graph.localGraph': { en: 'Local graph (current file)', vi: 'Đồ thị cục bộ (file hiện tại)' },
+  'graph.fullGraph': { en: 'Full graph (workspace)', vi: 'Đồ thị toàn workspace' },
+  'graph.refresh': { en: 'Rebuild graph', vi: 'Dựng lại đồ thị' },
+  'graph.tooLarge': { en: 'Graph too large (>2000 nodes) — local view only.', vi: 'Đồ thị quá lớn (>2000 node) — chỉ hiển thị cục bộ.' },
+
+  // --- Backlinks (v1.8.0) ---
+  'backlinks.title': { en: 'Backlinks', vi: 'Liên kết ngược' },
+  'backlinks.empty': { en: 'No backlinks. Other notes will appear here when they link to this file.', vi: 'Chưa có liên kết ngược. Các ghi chú khác sẽ xuất hiện ở đây khi link đến file này.' },
+  'backlinks.loading': { en: 'Finding backlinks…', vi: 'Đang tìm liên kết ngược…' },
+  'backlinks.linkedFrom': { en: 'Linked from {count} note(s)', vi: 'Được liên kết từ {count} ghi chú' },
+  'backlinks.wikilink': { en: 'Wiki link', vi: 'Wiki link' },
+  'backlinks.mdLink': { en: 'Markdown link', vi: 'Markdown link' },
 };
 
 const currentLocale: Ref<Locale> = ref('en');

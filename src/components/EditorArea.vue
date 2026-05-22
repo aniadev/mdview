@@ -7,6 +7,7 @@ import { useUiStore } from "../stores/ui";
 import SplitPane from "./SplitPane.vue";
 import SourceEditor from "./SourceEditor.vue";
 import PreviewPane from "./PreviewPane.vue";
+import GraphPanel from "./GraphPanel.vue";
 import { useI18n } from "../i18n";
 
 const { t } = useI18n();
@@ -93,41 +94,44 @@ async function onOpenBrowser() {
 
 <template>
   <div class="editor-area" v-if="tab">
-    <div v-if="tab.loading" class="empty-editor">{{ t('preview.loading', { name: tab.name }) }}</div>
-    <div v-else-if="tab.loadError" class="empty-editor" style="color: var(--danger)">
-      {{ tab.loadError }}
-    </div>
-    <SplitPane
-      v-else
-      :initial="ratio"
-      @update:ratio="ratio = $event"
-    >
-      <template #left>
-        <SourceEditor
-          ref="editorRef"
-          :model-value="tab.content"
-          :tab-key="tab.path"
-          :scroll-percent="previewScrollPercent"
-          :scroll-to-heading="previewHeadingIndex"
-          :target-line="ui.targetLine"
-          @update:model-value="onUpdate"
-          @scroll="onScroll"
-          @save="onSave"
-          @open-browser="onOpenBrowser"
-        />
-      </template>
-      <template #right>
-        <PreviewPane
-          ref="previewRef"
-          :source="tab.content"
-          :file-path="tab.path"
-          :scroll-percent="scrollPercent"
-          :scroll-to-heading="headingIndex"
-          @scroll="onPreviewScroll"
-          @toggle-checklist="onToggleChecklist"
-        />
-      </template>
-    </SplitPane>
+    <GraphPanel v-if="tab.path === 'app://graph'" />
+    <template v-else>
+      <div v-if="tab.loading" class="empty-editor">{{ t('preview.loading', { name: tab.name }) }}</div>
+      <div v-else-if="tab.loadError" class="empty-editor" style="color: var(--danger)">
+        {{ tab.loadError }}
+      </div>
+      <SplitPane
+        v-else
+        :initial="ratio"
+        @update:ratio="ratio = $event"
+      >
+        <template #left>
+          <SourceEditor
+            ref="editorRef"
+            :model-value="tab.content"
+            :tab-key="tab.path"
+            :scroll-percent="previewScrollPercent"
+            :scroll-to-heading="previewHeadingIndex"
+            :target-line="ui.targetLine"
+            @update:model-value="onUpdate"
+            @scroll="onScroll"
+            @save="onSave"
+            @open-browser="onOpenBrowser"
+          />
+        </template>
+        <template #right>
+          <PreviewPane
+            ref="previewRef"
+            :source="tab.content"
+            :file-path="tab.path"
+            :scroll-percent="scrollPercent"
+            :scroll-to-heading="headingIndex"
+            @scroll="onPreviewScroll"
+            @toggle-checklist="onToggleChecklist"
+          />
+        </template>
+      </SplitPane>
+    </template>
   </div>
 </template>
 

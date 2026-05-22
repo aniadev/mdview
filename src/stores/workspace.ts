@@ -253,6 +253,37 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     node.expanded = true;
   }
 
+  async function expandPathToNode(targetFilePath: string) {
+    const normalized = targetFilePath.replace(/\\/g, "/");
+    
+    // Find absolute parents/ancestors
+    // E.g., targetFilePath = "/Users/name/doc/nested/file.md"
+    // We want to expand:
+    // 1. Walk through roots
+    // Let's identify which root this file belongs to.
+    let activeRoot = null;
+    for (const root of roots.value) {
+      const rootNorm = root.path.replace(/\\/g, "/");
+      if (normalized.startsWith(rootNorm + "/")) {
+        activeRoot = root;
+        break;
+      }
+    }
+    if (!activeRoot) return;
+
+    // Split path into segments from root
+    const rootNorm = activeRoot.path.replace(/\\/g, "/");
+    const relativePart = normalized.substring(rootNorm.length + 1);
+    const segments = relativePart.split("/");
+    // We will build ancestral paths sequentially:
+    // rootNorm/segments[0], rootNorm/segments[0]/segments[1], etc. (excluding the file itself)
+    let currentPath = rootNorm;
+    for (let i = 0; i < segments.length - 1; i++) {
+      currentPath += "/" + segments[i];
+      await ensureDirExpanded(currentPath);
+    }
+  }
+
   function findNodeByPath(target: string): TreeNode | null {
     function walk(nodes: TreeNode[]): TreeNode | null {
       for (const n of nodes) {
@@ -659,6 +690,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     restoreWorkspace,
     toggleDir,
     ensureDirExpanded,
+    expandPathToNode,
     refreshRoot,
     refreshRootPreservingState,
     refreshParentOf,

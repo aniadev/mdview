@@ -3,7 +3,7 @@ import { ref } from "vue";
 import { load } from "@tauri-apps/plugin-store";
 import type { TocHeading } from "../components/TocPanel.vue";
 
-export type SidebarView = "explorer" | "outline" | "search";
+export type SidebarView = "explorer" | "outline" | "search" | "graph";
 
 export const useUiStore = defineStore("ui", () => {
   const sidebarVisible = ref(true);

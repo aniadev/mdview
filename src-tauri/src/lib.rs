@@ -1,6 +1,8 @@
+use once_cell::sync::Lazy;
 use portable_pty::{native_pty_system, Child, CommandBuilder, MasterPty, PtySize};
+use regex::Regex;
 use serde::Serialize;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU32, Ordering};
@@ -406,6 +408,336 @@ fn search_workspace(query: String, roots: Vec<String>) -> Result<Vec<SearchResul
     });
 
     Ok(results)
+}
+
+// ─── Link graph (v1.8.0) ───────────────────────────────────────────────────
+
+#[derive(Serialize, Clone)]
+pub struct GraphNode {
+    pub path: String,
+    pub label: String,
+    pub degree: u32,
+    pub exists: bool,
+}
+
+#[derive(Serialize, Clone)]
+pub struct GraphEdge {
+    pub source: String,
+    pub target: String,
+    pub kind: String,
+    pub unresolved: bool,
+}
+
+#[derive(Serialize, Clone, Default)]
+pub struct LinkGraph {
+    pub nodes: Vec<GraphNode>,
+    pub edges: Vec<GraphEdge>,
+}
+
+#[derive(Default)]
+pub struct LinkGraphCache(Mutex<Option<CachedGraph>>);
+
+pub struct CachedGraph {
+    pub roots_key: String,
+    pub graph: LinkGraph,
+}
+
+fn roots_signature(roots: &[String]) -> String {
+    let mut copy: Vec<String> = roots.iter().map(|s| norm_slashes(s)).collect();
+    copy.sort();
+    copy.join("\n")
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum LinkKind {
+    Wiki,
+    Md,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct ParsedLink {
+    pub kind: LinkKind,
+    pub target: String,
+    pub line: usize,
+}
+
+static WIKI_RE: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"\[\[([^\]\|#\r\n]+)(?:[\|#][^\]\r\n]*)?\]\]").unwrap());
+static MD_RE: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"\[[^\]]*\]\(([^)\s#]+\.(?:md|markdown))(?:#[^)]*)?\)").unwrap()
+});
+
+fn norm_slashes(s: &str) -> String {
+    s.replace('\\', "/")
+}
+
+pub fn parse_links_in_text(text: &str) -> Vec<ParsedLink> {
+    let mut out = Vec::new();
+    let mut fence_marker: Option<&str> = None;
+    for (idx, line) in text.lines().enumerate() {
+        let trimmed = line.trim_start();
+        if let Some(open) = fence_marker {
+            if trimmed.starts_with(open) {
+                fence_marker = None;
+            }
+            continue;
+        }
+        if trimmed.starts_with("```") {
+            fence_marker = Some("```");
+            continue;
+        }
+        if trimmed.starts_with("~~~") {
+            fence_marker = Some("~~~");
+            continue;
+        }
+        for cap in WIKI_RE.captures_iter(line) {
+            if let Some(m) = cap.get(1) {
+                let t = m.as_str().trim().to_string();
+                if !t.is_empty() {
+                    out.push(ParsedLink {
+                        kind: LinkKind::Wiki,
+                        target: t,
+                        line: idx + 1,
+                    });
+                }
+            }
+        }
+        for cap in MD_RE.captures_iter(line) {
+            if let Some(m) = cap.get(1) {
+                let t = m.as_str().trim().to_string();
+                if !t.is_empty() {
+                    out.push(ParsedLink {
+                        kind: LinkKind::Md,
+                        target: t,
+                        line: idx + 1,
+                    });
+                }
+            }
+        }
+    }
+    out
+}
+
+fn collect_md_files(roots: &[String]) -> Vec<PathBuf> {
+    let mut files = Vec::new();
+    let mut seen: HashSet<PathBuf> = HashSet::new();
+    for root in roots {
+        let root_path = PathBuf::from(root);
+        if !root_path.is_dir() {
+            continue;
+        }
+        for entry in WalkDir::new(&root_path)
+            .follow_links(false)
+            .into_iter()
+            .filter_entry(|e| {
+                if e.depth() == 0 {
+                    return true;
+                }
+                let name = e.file_name().to_string_lossy();
+                name != ".git" && name != "node_modules" && !name.starts_with('.')
+            })
+            .filter_map(|e| e.ok())
+        {
+            if entry.file_type().is_file() && is_md_file(entry.path()) {
+                let p = entry.path().to_path_buf();
+                let key = p.canonicalize().unwrap_or_else(|_| p.clone());
+                if seen.insert(key) {
+                    files.push(p);
+                }
+            }
+        }
+    }
+    files
+}
+
+fn resolve_wiki_target(
+    name: &str,
+    _source_dir: &Path,
+    basename_index: &HashMap<String, PathBuf>,
+) -> Option<PathBuf> {
+    let mut candidate = name.to_string();
+    if !candidate.to_lowercase().ends_with(".md")
+        && !candidate.to_lowercase().ends_with(".markdown")
+    {
+        candidate.push_str(".md");
+    }
+    let lower = candidate.to_lowercase();
+    basename_index.get(&lower).cloned()
+}
+
+fn resolve_md_target(rel: &str, source_dir: &Path) -> Option<PathBuf> {
+    let p = source_dir.join(rel);
+    if p.is_file() {
+        return Some(p.canonicalize().unwrap_or(p));
+    }
+    None
+}
+
+fn label_for_path(p: &Path) -> String {
+    p.file_stem()
+        .or_else(|| p.file_name())
+        .map(|s| s.to_string_lossy().to_string())
+        .unwrap_or_else(|| p.to_string_lossy().to_string())
+}
+
+fn build_graph_impl(files: Vec<PathBuf>) -> LinkGraph {
+    if files.is_empty() {
+        return LinkGraph::default();
+    }
+    let canonical: Vec<PathBuf> = files
+        .iter()
+        .map(|p| p.canonicalize().unwrap_or_else(|_| p.clone()))
+        .collect();
+
+    let mut basename_index: HashMap<String, PathBuf> = HashMap::new();
+    for p in &canonical {
+        if let Some(name) = p.file_name() {
+            basename_index.insert(name.to_string_lossy().to_lowercase(), p.clone());
+        }
+    }
+
+    let num_threads = std::thread::available_parallelism()
+        .map(|n| n.get())
+        .unwrap_or(4)
+        .max(1);
+    let files_arc = std::sync::Arc::new(canonical.clone());
+    let basename_arc = std::sync::Arc::new(basename_index);
+    let chunk_size = files_arc.len().div_ceil(num_threads);
+
+    let mut handles = Vec::new();
+    for i in 0..num_threads {
+        let start = i * chunk_size;
+        if start >= files_arc.len() {
+            break;
+        }
+        let end = (start + chunk_size).min(files_arc.len());
+        let files_arc = std::sync::Arc::clone(&files_arc);
+        let basename_arc = std::sync::Arc::clone(&basename_arc);
+
+        handles.push(std::thread::spawn(move || {
+            let mut local: Vec<GraphEdge> = Vec::new();
+            for src in &files_arc[start..end] {
+                let content = match std::fs::read_to_string(src) {
+                    Ok(s) => s,
+                    Err(e) => {
+                        eprintln!("[graph] read {:?} failed: {}", src, e);
+                        continue;
+                    }
+                };
+                let src_dir = src.parent().unwrap_or(Path::new(""));
+                let src_key = norm_slashes(&src.to_string_lossy());
+                for link in parse_links_in_text(&content) {
+                    let (resolved, kind_str) = match link.kind {
+                        LinkKind::Wiki => (
+                            resolve_wiki_target(&link.target, src_dir, &basename_arc),
+                            "wiki",
+                        ),
+                        LinkKind::Md => (resolve_md_target(&link.target, src_dir), "md"),
+                    };
+                    let (target_key, unresolved) = match resolved {
+                        Some(p) => (norm_slashes(&p.to_string_lossy()), false),
+                        None => {
+                            let raw = match link.kind {
+                                LinkKind::Wiki => {
+                                    let mut n = link.target.clone();
+                                    if !n.to_lowercase().ends_with(".md")
+                                        && !n.to_lowercase().ends_with(".markdown")
+                                    {
+                                        n.push_str(".md");
+                                    }
+                                    norm_slashes(&n)
+                                }
+                                LinkKind::Md => norm_slashes(&link.target),
+                            };
+                            (raw, true)
+                        }
+                    };
+                    if target_key == src_key {
+                        continue;
+                    }
+                    local.push(GraphEdge {
+                        source: src_key.clone(),
+                        target: target_key,
+                        kind: kind_str.into(),
+                        unresolved,
+                    });
+                }
+            }
+            local
+        }));
+    }
+
+    let mut edges: Vec<GraphEdge> = Vec::new();
+    for h in handles {
+        if let Ok(mut chunk) = h.join() {
+            edges.append(&mut chunk);
+        }
+    }
+
+    let mut node_map: HashMap<String, GraphNode> = HashMap::new();
+    for p in &canonical {
+        let key = norm_slashes(&p.to_string_lossy());
+        node_map.insert(
+            key.clone(),
+            GraphNode {
+                path: key,
+                label: label_for_path(p),
+                degree: 0,
+                exists: true,
+            },
+        );
+    }
+    for e in &edges {
+        node_map.entry(e.source.clone()).and_modify(|n| n.degree += 1);
+        node_map
+            .entry(e.target.clone())
+            .and_modify(|n| n.degree += 1)
+            .or_insert_with(|| {
+                let label_src = e.target.rsplit('/').next().unwrap_or(&e.target);
+                let label = label_src
+                    .trim_end_matches(".md")
+                    .trim_end_matches(".markdown")
+                    .to_string();
+                GraphNode {
+                    path: e.target.clone(),
+                    label,
+                    degree: 1,
+                    exists: !e.unresolved,
+                }
+            });
+    }
+
+    let mut nodes: Vec<GraphNode> = node_map.into_values().collect();
+    nodes.sort_by(|a, b| a.label.to_lowercase().cmp(&b.label.to_lowercase()));
+
+    LinkGraph { nodes, edges }
+}
+
+#[tauri::command]
+fn build_link_graph(
+    roots: Vec<String>,
+    refresh: bool,
+    state: State<'_, LinkGraphCache>,
+) -> Result<LinkGraph, String> {
+    let key = roots_signature(&roots);
+    if !refresh {
+        if let Ok(guard) = state.0.lock() {
+            if let Some(c) = guard.as_ref() {
+                if c.roots_key == key {
+                    return Ok(c.graph.clone());
+                }
+            }
+        }
+    }
+    let files = collect_md_files(&roots);
+    let graph = build_graph_impl(files);
+    if let Ok(mut guard) = state.0.lock() {
+        *guard = Some(CachedGraph {
+            roots_key: key,
+            graph: graph.clone(),
+        });
+    }
+    Ok(graph)
 }
 
 // ─── .code-workspace parsing (v1.1) ────────────────────────────────────────
@@ -831,6 +1163,7 @@ pub fn run() {
         .plugin(tauri_plugin_process::init())
         .manage(PtyStore::default())
         .manage(PendingOpens::default())
+        .manage(LinkGraphCache::default())
         .setup(move |app| {
             if !initial_files.is_empty() {
                 if let Some(state) = app.try_state::<PendingOpens>() {
@@ -866,6 +1199,7 @@ pub fn run() {
             consume_pending_open_files,
             copy_path,
             search_workspace,
+            build_link_graph,
         ])
 
         .build(tauri::generate_context!())
@@ -894,3 +1228,101 @@ fn handle_run_event(app_handle: &AppHandle, event: RunEvent) {
 
 #[cfg(not(target_os = "macos"))]
 fn handle_run_event(_app_handle: &AppHandle, _event: RunEvent) {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_basic_wiki_link() {
+        let links = parse_links_in_text("see [[Other Note]] here");
+        assert_eq!(links.len(), 1);
+        assert_eq!(links[0].kind, LinkKind::Wiki);
+        assert_eq!(links[0].target, "Other Note");
+        assert_eq!(links[0].line, 1);
+    }
+
+    #[test]
+    fn parses_wiki_alias_and_strips_after_pipe() {
+        let links = parse_links_in_text("link [[file|display name]] !");
+        assert_eq!(links.len(), 1);
+        assert_eq!(links[0].target, "file");
+    }
+
+    #[test]
+    fn parses_wiki_heading_suffix_stripped() {
+        let links = parse_links_in_text("[[file#heading]]");
+        assert_eq!(links.len(), 1);
+        assert_eq!(links[0].target, "file");
+    }
+
+    #[test]
+    fn parses_md_link_with_heading_anchor() {
+        let links = parse_links_in_text("see [text](./sub/foo.md#h2) end");
+        assert_eq!(links.len(), 1);
+        assert_eq!(links[0].kind, LinkKind::Md);
+        assert_eq!(links[0].target, "./sub/foo.md");
+    }
+
+    #[test]
+    fn skips_links_inside_fenced_code_block() {
+        let text = "before [[real]]\n```\n[[fake]]\n[t](inside.md)\n```\nafter [[real2]]";
+        let links = parse_links_in_text(text);
+        let targets: Vec<&str> = links.iter().map(|l| l.target.as_str()).collect();
+        assert_eq!(targets, vec!["real", "real2"]);
+    }
+
+    #[test]
+    fn skips_links_inside_tilde_fence() {
+        let text = "[[a]]\n~~~\n[[b]]\n~~~\n[[c]]";
+        let links = parse_links_in_text(text);
+        let targets: Vec<&str> = links.iter().map(|l| l.target.as_str()).collect();
+        assert_eq!(targets, vec!["a", "c"]);
+    }
+
+    #[test]
+    fn fence_marker_mismatch_does_not_close_fence() {
+        // ``` opens a fence; a stray ~~~ inside should NOT close it
+        let text = "outer [[a]]\n```\nin1 [[fake1]]\n~~~ tricky line\nin2 [[fake2]]\n```\n[[b]]";
+        let links = parse_links_in_text(text);
+        let targets: Vec<&str> = links.iter().map(|l| l.target.as_str()).collect();
+        assert_eq!(targets, vec!["a", "b"]);
+    }
+
+    #[test]
+    fn roots_signature_order_independent() {
+        let a = roots_signature(&["/a".into(), "/b".into()]);
+        let b = roots_signature(&["/b".into(), "/a".into()]);
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn multiple_links_on_single_line() {
+        let links = parse_links_in_text("[[a]] and [[b|alias]] and [t](./c.md)");
+        assert_eq!(links.len(), 3);
+        assert_eq!(links[0].target, "a");
+        assert_eq!(links[1].target, "b");
+        assert_eq!(links[2].target, "./c.md");
+    }
+
+    #[test]
+    fn ignores_md_link_without_md_extension() {
+        let links = parse_links_in_text("[t](https://example.com) and [t](./x.png)");
+        assert!(links.is_empty());
+    }
+
+    #[test]
+    fn build_graph_handles_empty_input() {
+        let g = build_graph_impl(vec![]);
+        assert!(g.nodes.is_empty());
+        assert!(g.edges.is_empty());
+    }
+
+    #[test]
+    fn parses_link_line_number() {
+        let text = "line1\nline2 has [[target]]\nline3";
+        let links = parse_links_in_text(text);
+        assert_eq!(links.len(), 1);
+        assert_eq!(links[0].line, 2);
+    }
+}

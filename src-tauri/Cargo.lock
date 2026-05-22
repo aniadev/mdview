@@ -2082,7 +2082,9 @@ dependencies = [
 name = "mdview"
 version = "1.7.1"
 dependencies = [
+ "once_cell",
  "portable-pty",
+ "regex",
  "serde",
  "serde_json",
  "tauri",

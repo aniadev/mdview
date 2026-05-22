@@ -10,7 +10,9 @@ mdview is a desktop app for people who keep notes, documentation, or AI agent in
 
 *mdview là desktop app cho những ai giữ note, docs hoặc AI agent instructions trong Markdown — bên trong một project folder. File tree thông minh, split-pane editor với live preview, terminal tích hợp sẵn, và đủ thứ tool năng suất — không bloat, không rác.*
 
-![mdview screenshot](./public/screenshot.png)
+![mdview screenshot](./public/screenshot-v1.8.0.png)
+
+![mdview screenshot](./public/screenshot-graphview.png)
 
 [Changelog](./CHANGELOG.md) · [GitHub Releases](https://github.com/aniadev/mdview/releases)
 

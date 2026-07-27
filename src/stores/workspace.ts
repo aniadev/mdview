@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import { ref, computed } from "vue";
+import { ref, computed, watch } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { load, Store } from "@tauri-apps/plugin-store";
@@ -53,6 +53,15 @@ export const useWorkspaceStore = defineStore("workspace", () => {
   );
 
   const rootPaths = computed<string[]>(() => roots.value.map((r) => r.path));
+
+  // Sync workspace roots with Rust backend for FS boundary validation
+  watch(rootPaths, async (paths) => {
+    try {
+      await invoke("set_workspace_roots", { roots: paths });
+    } catch (e) {
+      console.error("Failed to sync workspace roots", e);
+    }
+  }, { immediate: true });
 
   const hasAnyMd = computed(() =>
     roots.value.some((r) => r.children.some((c) => c.has_md))
@@ -635,9 +644,16 @@ export const useWorkspaceStore = defineStore("workspace", () => {
         error.value = "Chưa mở thư mục workspace nào để tạo Daily Note. / No workspace folder opened to create Daily Note.";
         return;
       }
-
-      // Ensure directory format and normalize separators
+      
       const normalizedDir = targetDir.replace(/\\/g, "/");
+      
+      // Validate that the target folder is inside one of the workspace roots (M-6)
+      const isWithinRoot = rootPaths.value.some(root => normalizedDir.startsWith(root.replace(/\\/g, "/")));
+      if (!isWithinRoot) {
+        error.value = "Thư mục Daily Note không hợp lệ (không thuộc workspace hiện tại). / Invalid Daily Note folder (not in current workspace).";
+        return;
+      }
+
       const filePath = `${normalizedDir}/${dateStr}.md`;
 
       const exists = await invoke<boolean>("path_exists", { path: filePath });

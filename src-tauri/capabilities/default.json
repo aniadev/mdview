@@ -13,9 +13,11 @@
     {
       "identifier": "fs:scope",
       "allow": [
-        { "path": "$HOME/**" },
-        { "path": "/tmp/**" },
-        { "path": "/Volumes/**" }
+        { "path": "$HOME/**/*.md" },
+        { "path": "$HOME/**/*.markdown" },
+        { "path": "$HOME/**/*.code-workspace" },
+        { "path": "$HOME/.mdview/**" },
+        { "path": "/tmp/mdview-*/**" }
       ]
     },
     "store:default",

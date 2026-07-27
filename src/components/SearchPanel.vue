@@ -101,20 +101,36 @@ async function selectMatch(path: string, name: string, line: number) {
 }
 
 // Highlight the matched text in the snippet
-function highlightText(text: string, q: string): string {
-  if (!q.trim()) return text;
+interface TextSegment {
+  text: string;
+  isMatch: boolean;
+}
+
+function highlightText(text: string, q: string): TextSegment[] {
+  if (!q.trim()) return [{ text, isMatch: false }];
   const escaped = q.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&");
   const regex = new RegExp(`(${escaped})`, "gi");
-  // Escape HTML to prevent XSS before injecting mark tags
-  const escapedText = text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
   
-  return escapedText.replace(
-    regex,
-    `<mark class="search-highlight">$1</mark>`
-  );
+  const segments: TextSegment[] = [];
+  let lastIndex = 0;
+  let match;
+  
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      segments.push({ text: text.substring(lastIndex, match.index), isMatch: false });
+    }
+    segments.push({ text: match[0], isMatch: true });
+    lastIndex = regex.lastIndex;
+    
+    // Prevent infinite loop if regex matches empty string (shouldn't happen with our regex, but safe)
+    if (match.index === regex.lastIndex) regex.lastIndex++;
+  }
+  
+  if (lastIndex < text.length) {
+    segments.push({ text: text.substring(lastIndex), isMatch: false });
+  }
+  
+  return segments;
 }
 </script>
 
@@ -178,10 +194,12 @@ function highlightText(text: string, q: string): string {
                 @click="selectMatch(file.path, file.name, match.line_number)"
               >
                 <span class="match-line-num">L{{ match.line_number }}</span>
-                <span
-                  class="match-snippet"
-                  v-html="highlightText(match.line_content, query)"
-                ></span>
+                <span class="match-snippet">
+                  <template v-for="(seg, i) in highlightText(match.line_content, query)" :key="i">
+                    <mark v-if="seg.isMatch" class="search-highlight">{{ seg.text }}</mark>
+                    <template v-else>{{ seg.text }}</template>
+                  </template>
+                </span>
               </div>
             </div>
           </div>

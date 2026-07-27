@@ -20,10 +20,10 @@
       }
     ],
     "security": {
-      "csp": null,
+      "csp": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; img-src 'self' asset: https: data:; font-src 'self' https://cdn.jsdelivr.net; connect-src 'self' https://api.github.com https://raw.githubusercontent.com; worker-src 'self' blob:;",
       "assetProtocol": {
         "enable": true,
-        "scope": ["**"]
+        "scope": ["$HOME/**", "/tmp/**", "/Volumes/**"]
       }
     }
   },

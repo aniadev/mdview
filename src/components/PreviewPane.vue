@@ -6,6 +6,7 @@ import markdownItAnchor from "markdown-it-anchor";
 import markdownItTaskLists from "markdown-it-task-lists";
 import katexPlugin from "@vscode/markdown-it-katex";
 import hljs from "highlight.js";
+import DOMPurify from "dompurify";
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import hljsDarkCss from "highlight.js/styles/github-dark.css?inline";
 import hljsLightCss from "highlight.js/styles/github.css?inline";
@@ -16,6 +17,7 @@ import { useUiStore } from "../stores/ui";
 import { useI18n } from "../i18n";
 import type { TocHeading } from "./TocPanel.vue";
 import { openPath, openUrl } from "@tauri-apps/plugin-opener";
+import { confirm } from "@tauri-apps/plugin-dialog";
 import { useTabsStore } from "../stores/tabs";
 import BacklinksPanel from "./BacklinksPanel.vue";
 
@@ -122,7 +124,7 @@ async function runMermaid(seq: number) {
     mermaid.initialize({
       startOnLoad: false,
       theme: themeStore.previewTheme === "dark" ? "dark" : "default",
-      securityLevel: "loose",
+      securityLevel: "strict",
     });
     mermaidInitialized = true;
   }
@@ -186,7 +188,7 @@ async function render() {
   });
   
   const baseDir = dirname(props.filePath);
-  html.value = processedHtml.replace(
+  const rawHtml = processedHtml.replace(
     /<img\s+([^>]*?)src="([^"]+)"([^>]*)>/g,
     (_m, pre: string, src: string, post: string) => {
       if (!src || isAbsolute(src)) return `<img ${pre}src="${src}"${post}>`;
@@ -195,6 +197,10 @@ async function render() {
       return `<img ${pre}src="${url}"${post}>`;
     }
   );
+  
+  html.value = DOMPurify.sanitize(rawHtml, {
+    ADD_ATTR: ['data-checklist-idx']
+  });
   const seq = ++renderSeq;
   await nextTick();
   headings.value = extractHeadings();
@@ -399,7 +405,7 @@ async function onPreviewClick(e: MouseEvent) {
   if (!href || href.startsWith("#")) return;
 
   if (/^https?:\/\//i.test(href)) {
-    const confirmed = window.confirm(`Open in browser?\n${href}`);
+    const confirmed = await confirm(`Open in browser?\n${href}`, { title: "mdview", kind: "info" });
     if (confirmed) await openUrl(href);
     return;
   }

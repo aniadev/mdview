@@ -11,6 +11,42 @@ use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
 use tauri::{AppHandle, Emitter, Manager, RunEvent, State};
 use walkdir::WalkDir;
 
+#[derive(Default)]
+pub struct WorkspaceRoots {
+    pub paths: Mutex<Vec<String>>,
+    pub allowed_files: Mutex<HashSet<String>>,
+}
+
+#[tauri::command]
+fn set_workspace_roots(roots: Vec<String>, state: State<'_, WorkspaceRoots>) {
+    if let Ok(mut g) = state.paths.lock() {
+        *g = roots;
+    }
+}
+
+fn is_within_workspace(path: &str, state: &State<'_, WorkspaceRoots>) -> bool {
+    let canon = match std::fs::canonicalize(path) {
+        Ok(c) => c,
+        Err(_) => std::path::PathBuf::from(path)
+    };
+    
+    if let Ok(allowed) = state.allowed_files.lock() {
+        for f in allowed.iter() {
+            let f_canon = std::fs::canonicalize(f).unwrap_or_else(|_| std::path::PathBuf::from(f));
+            if canon == f_canon { return true; }
+        }
+    }
+
+    if let Ok(roots) = state.paths.lock() {
+        if roots.is_empty() { return false; }
+        for root in roots.iter() {
+            let root_canon = std::fs::canonicalize(root).unwrap_or_else(|_| std::path::PathBuf::from(root));
+            if canon.starts_with(&root_canon) { return true; }
+        }
+    }
+    false
+}
+
 #[derive(Serialize)]
 pub struct FsEntry {
     pub name: String,
@@ -95,13 +131,17 @@ fn path_exists(path: String) -> bool {
 }
 
 #[tauri::command]
-fn read_text(path: String) -> Result<String, String> {
-    std::fs::read_to_string(&path).map_err(|e| format!("{}: {}", path, e))
+fn read_text(path: String, state: State<'_, WorkspaceRoots>) -> Result<String, String> {
+    if !is_within_workspace(&path, &state) { return Err("access denied".into()); }
+    let meta = std::fs::metadata(&path).map_err(|_| "not found")?;
+    if meta.len() > 50 * 1024 * 1024 { return Err("file too large (max 50MB)".into()); }
+    std::fs::read_to_string(&path).map_err(|_| "read failed".into())
 }
 
 #[tauri::command]
-fn write_text(path: String, contents: String) -> Result<(), String> {
-    std::fs::write(&path, contents).map_err(|e| format!("{}: {}", path, e))
+fn write_text(path: String, contents: String, state: State<'_, WorkspaceRoots>) -> Result<(), String> {
+    if !is_within_workspace(&path, &state) { return Err("access denied".into()); }
+    std::fs::write(&path, contents).map_err(|_| "write failed".into())
 }
 
 #[derive(Serialize)]
@@ -113,7 +153,7 @@ pub struct MdFile {
 
 #[tauri::command]
 fn list_md_files(root: String) -> Result<Vec<MdFile>, String> {
-    let root_path = PathBuf::from(&root);
+    let root_path = std::fs::canonicalize(&root).unwrap_or_else(|_| std::path::PathBuf::from(&root));
     if !root_path.is_dir() {
         return Err(format!("not a directory: {}", root));
     }
@@ -169,14 +209,17 @@ fn write_temp_html(html: String, base_name: Option<String>) -> Result<String, St
     let filename = format!("mdview-{}-{}.html", stem, stamp);
     let mut path = std::env::temp_dir();
     path.push(filename);
-    std::fs::write(&path, html).map_err(|e| e.to_string())?;
+    use std::fs::OpenOptions;
+    let mut file = OpenOptions::new().write(true).create_new(true).open(&path).map_err(|_| "failed to create temp file")?;
+    file.write_all(html.as_bytes()).map_err(|_| "write failed")?;
     Ok(path.to_string_lossy().to_string())
 }
 
 // ─── File management (v1.1) ────────────────────────────────────────────────
 
 #[tauri::command]
-fn create_md_file(dir: String, filename: String) -> Result<String, String> {
+fn create_md_file(dir: String, filename: String, state: State<'_, WorkspaceRoots>) -> Result<String, String> {
+    if !is_within_workspace(&dir, &state) { return Err("access denied".into()); }
     let dir_p = PathBuf::from(&dir);
     if !dir_p.is_dir() {
         return Err(format!("not a directory: {}", dir));
@@ -217,7 +260,8 @@ fn create_md_file(dir: String, filename: String) -> Result<String, String> {
 }
 
 #[tauri::command]
-fn create_dir(path: String) -> Result<String, String> {
+fn create_dir(path: String, state: State<'_, WorkspaceRoots>) -> Result<String, String> {
+    if !is_within_workspace(&path, &state) { return Err("access denied".into()); }
     let p = PathBuf::from(&path);
     if p.exists() {
         return Err(format!("already exists: {}", path));
@@ -227,7 +271,8 @@ fn create_dir(path: String) -> Result<String, String> {
 }
 
 #[tauri::command]
-fn rename_path(from: String, to: String) -> Result<(), String> {
+fn rename_path(from: String, to: String, state: State<'_, WorkspaceRoots>) -> Result<(), String> {
+    if !is_within_workspace(&from, &state) || !is_within_workspace(&to, &state) { return Err("access denied".into()); }
     let from_p = PathBuf::from(&from);
     let to_p = PathBuf::from(&to);
     if !from_p.exists() {
@@ -244,7 +289,8 @@ fn rename_path(from: String, to: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn delete_file(path: String) -> Result<(), String> {
+fn delete_file(path: String, state: State<'_, WorkspaceRoots>) -> Result<(), String> {
+    if !is_within_workspace(&path, &state) { return Err("access denied".into()); }
     let p = PathBuf::from(&path);
     if !p.exists() {
         return Err(format!("not found: {}", path));
@@ -1295,12 +1341,18 @@ pub fn run() {
         .plugin(tauri_plugin_process::init())
         .manage(PtyStore::default())
         .manage(PendingOpens::default())
+        .manage(WorkspaceRoots::default())
         .manage(LinkGraphCache::default())
         .setup(move |app| {
             if !initial_files.is_empty() {
                 if let Some(state) = app.try_state::<PendingOpens>() {
                     if let Ok(mut g) = state.paths.lock() {
                         g.extend(initial_files.iter().cloned());
+                    }
+                }
+                if let Some(ws_state) = app.try_state::<WorkspaceRoots>() {
+                    if let Ok(mut allowed) = ws_state.allowed_files.lock() {
+                        allowed.extend(initial_files.iter().cloned());
                     }
                 }
             }
@@ -1315,6 +1367,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             list_dir,
             path_exists,
+            set_workspace_roots,
             read_text,
             write_text,
             list_md_files,

@@ -1,0 +1,4 @@
+# Landing is a standalone workspace — do not let it merge into the
+# mdview app workspace at the repo root (which has its own pnpm-workspace.yaml).
+packages:
+  - .

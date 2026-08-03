@@ -37,7 +37,14 @@ onBeforeUnmount(() => {
         <a v-for="l in links" :key="l.href" :href="l.href">{{ l.label }}</a>
       </div>
       <div class="nav-right">
-        <a class="btn btn-ghost btn-sm" :href="GITHUB" target="_blank" rel="noopener">
+        <a
+          class="btn btn-ghost btn-sm"
+          :href="GITHUB"
+          target="_blank"
+          rel="noopener"
+          aria-label="Star mdview on GitHub — open source Markdown editor repository"
+          title="mdview on GitHub"
+        >
           <Icon icon="lucide:star" width="13" height="13" /> Star
         </a>
         <a class="btn btn-primary btn-sm" href="#download">

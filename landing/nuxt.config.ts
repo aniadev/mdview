@@ -124,6 +124,14 @@ export default defineNuxtConfig({
                 license: 'https://opensource.org/licenses/MIT',
                 downloadUrl: 'https://github.com/aniadev/mdview/releases',
                 installUrl: 'https://github.com/aniadev/mdview/releases',
+                codeRepository: 'https://github.com/aniadev/mdview',
+                releaseNotes: 'https://github.com/aniadev/mdview/blob/main/CHANGELOG.md',
+                softwareHelp: 'https://github.com/aniadev/mdview#readme',
+                discussionUrl: 'https://github.com/aniadev/mdview/issues',
+                programmingLanguage: ['TypeScript', 'Vue', 'Rust'],
+                runtimePlatform: 'Tauri 2',
+                keywords:
+                  'markdown editor, markdown workspace, desktop markdown app, GFM preview, mermaid, KaTeX, wikilinks, backlinks, graph view, daily notes, AI agent instructions',
                 image: OG_IMAGE,
                 screenshot: OG_IMAGE,
                 isAccessibleForFree: true,
@@ -144,6 +152,10 @@ export default defineNuxtConfig({
                 },
                 author: { '@id': `${SITE_URL}/#author` },
                 publisher: { '@id': `${SITE_URL}/#author` },
+                sameAs: [
+                  'https://github.com/aniadev/mdview',
+                  'https://github.com/aniadev/mdview/releases',
+                ],
               },
               {
                 '@type': 'WebSite',

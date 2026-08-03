@@ -37,6 +37,42 @@ app/
 public/mdview-logo.png         # brand logo (resize từ root public/mdview.png)
 ```
 
+## Deploy
+
+Production: **https://mdviewz.vercel.app** (Vercel project `mdviewz`).
+
+```sh
+pnpm build
+npx vercel deploy --prebuilt --prod --yes
+# Vercel re-aliases to the auto-generated URL, so re-point the domain:
+npx vercel alias set <deployment-url> mdviewz.vercel.app
+```
+
+> `mdview.vercel.app` đã bị một project không liên quan chiếm, nên dùng `mdviewz`.
+> Nếu đổi domain: sửa `SITE_URL` trong `nuxt.config.ts` + `Sitemap:` trong `public/robots.txt`.
+
+## Google Search Console
+
+SEO đã cấu hình sẵn (meta robots/googlebot, canonical, hreflang, OG/Twitter,
+JSON-LD, robots.txt, sitemap.xml). Chỉ còn **xác minh quyền sở hữu** — bước này
+cần tài khoản Google của bạn:
+
+1. Vào https://search.google.com/search-console → **Add property** → **URL prefix**
+   → nhập `https://mdviewz.vercel.app`
+2. Chọn phương thức **HTML tag**, copy phần `content="..."` (chỉ chuỗi token)
+3. Thêm token theo một trong hai cách:
+   - **Env var (khuyến nghị)** — trên Vercel: Settings → Environment Variables →
+     `NUXT_PUBLIC_GOOGLE_SITE_VERIFICATION` = `<token>`, rồi deploy lại
+   - **Hard-code** — sửa `GOOGLE_SITE_VERIFICATION` trong `nuxt.config.ts`
+4. Deploy lại, bấm **Verify** trong Search Console
+5. Sau khi verify: **Sitemaps** → submit `sitemap.xml`; dùng **URL Inspection** →
+   *Request indexing* để Google crawl ngay thay vì chờ
+
+Nếu để token rỗng, tag bị bỏ qua — site vẫn được index bình thường qua
+robots.txt + sitemap.xml, chỉ là không xem được dữ liệu trong Search Console.
+
+Kiểm tra structured data: https://search.google.com/test/rich-results
+
 ## Design system
 
 Tokens trong `app/assets/css/main.css` — lấy trực tiếp từ tokens thật của app (`src/styles/_variables.scss`):

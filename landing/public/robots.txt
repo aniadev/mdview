@@ -1,4 +1,20 @@
 User-agent: *
 Allow: /
 
+# Explicitly welcome the major search crawlers
+User-agent: Googlebot
+Allow: /
+
+User-agent: Googlebot-Image
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: DuckDuckBot
+Allow: /
+
+# Vercel build/preview internals are not useful in an index
+Disallow: /_nuxt/builds/
+
 Sitemap: https://mdviewz.vercel.app/sitemap.xml

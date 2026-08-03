@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { Icon } from '@iconify/vue'
+
 /**
  * Static force-graph mock, generated as pure markup so it's SSR-safe
  * (no DOM access needed). Mirrors the D3 graph view of v1.8.0.
@@ -33,13 +35,17 @@ const byId = new Map(nodes.map((n) => [n.id, n]))
 
 const graphMarkup = computed(() => {
   const parts: string[] = []
+  let ei = 0
   for (const [a, b, hi] of edges) {
     const na = byId.get(a)!
     const nb = byId.get(b)!
+    const len = Math.hypot(nb.x - na.x, nb.y - na.y)
     parts.push(
-      `<line x1="${na.x}" y1="${na.y}" x2="${nb.x}" y2="${nb.y}" class="${hi ? 'g-edge-hi' : 'g-edge'}" />`,
+      `<line x1="${na.x}" y1="${na.y}" x2="${nb.x}" y2="${nb.y}" class="${hi ? 'g-edge-hi' : 'g-edge'}" ` +
+        `style="--len:${len};--i:${ei++}" />`,
     )
   }
+  let ni = 0
   for (const n of nodes) {
     const cls = n.core
       ? 'g-node g-node-core'
@@ -47,7 +53,10 @@ const graphMarkup = computed(() => {
         ? 'g-node g-node-agent'
         : 'g-node'
     parts.push(
-      `<g transform="translate(${n.x},${n.y})">` +
+      `<g class="g-group" transform="translate(${n.x},${n.y})" style="--i:${ni++}">` +
+        (n.core
+          ? `<circle r="${n.core ? 26 : 22}" class="g-pulse" />`
+          : '') +
         `<circle r="${n.core ? 26 : 22}" class="${cls}" />` +
         `<text x="0" y="4" text-anchor="middle" class="${n.core ? 'g-text g-text-hi' : 'g-text'}">${n.label}</text>` +
         `</g>`,
@@ -61,12 +70,35 @@ const bulletPoints = [
   'Sidebar tab + full editor-pane tab view',
   'Backlinks panel lists every note pointing at the active file',
 ]
+
+/** Trigger the SVG draw-in once the panel scrolls into view. */
+const panelEl = ref<HTMLElement | null>(null)
+const drawn = ref(false)
+let io: IntersectionObserver | undefined
+
+onMounted(() => {
+  if (!panelEl.value) return
+  io = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((e) => {
+        if (e.isIntersecting) {
+          drawn.value = true
+          io?.disconnect()
+        }
+      })
+    },
+    { threshold: 0.25 },
+  )
+  io.observe(panelEl.value)
+})
+
+onBeforeUnmount(() => io?.disconnect())
 </script>
 
 <template>
-  <section id="graph" class="graph-sec">
+  <section id="graph" class="graph-sec glow-top">
     <div class="wrap graph-cols">
-      <div v-reveal>
+      <div v-reveal="{ variant: 'left' }">
         <div class="kicker">// v1.8.0</div>
         <h2>See your notes the way your brain does</h2>
         <p>
@@ -74,12 +106,14 @@ const bulletPoints = [
           network. Zoom, pan, drag nodes — click any node to open the file and expand it in the explorer.
         </p>
         <ul>
-          <li v-for="b in bulletPoints" :key="b">{{ b }}</li>
+          <li v-for="(b, i) in bulletPoints" :key="b" :style="{ '--li': i }">{{ b }}</li>
         </ul>
-        <a class="btn btn-primary" href="#download">Try it now</a>
+        <a class="btn btn-primary" href="#download">
+          <Icon icon="lucide:sparkles" width="15" height="15" /> Try it now
+        </a>
       </div>
 
-      <div class="graph-wrap" v-reveal="150">
+      <div ref="panelEl" class="graph-wrap" :class="{ drawn }" v-reveal="{ delay: 120, variant: 'right' }">
         <span class="g-label">graph: workspace.md</span>
         <svg class="graph" viewBox="0 0 480 340" v-html="graphMarkup" />
       </div>
@@ -114,30 +148,49 @@ const bulletPoints = [
 .graph-cols ul {
   list-style: none;
   display: grid;
-  gap: 10px;
-  margin-bottom: 28px;
+  gap: 12px;
+  margin-bottom: 30px;
 }
 
 .graph-cols li {
   display: flex;
-  gap: 10px;
-  font-size: 14px;
+  gap: 11px;
+  font-size: 14.5px;
   color: var(--text);
+  align-items: center;
 }
 
 .graph-cols li::before {
-  content: '✓';
-  color: #4cc38a;
-  font-weight: 700;
+  content: '';
+  width: 18px;
+  height: 18px;
+  flex: none;
+  border-radius: 50%;
+  background: rgba(76, 195, 138, 0.14);
+  border: 1px solid rgba(76, 195, 138, 0.4);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%234cc38a' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
 }
 
 .graph-wrap {
-  background: var(--bg-code);
+  background: linear-gradient(180deg, rgba(13, 17, 23, 0.9), rgba(13, 17, 23, 0.75));
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--radius-lg);
   padding: 18px;
   position: relative;
   overflow: hidden;
+  backdrop-filter: blur(10px);
+  box-shadow: var(--shadow-md);
+}
+
+/* soft inner glow */
+.graph-wrap::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 30% 40%, rgba(0, 120, 212, 0.12), transparent 60%);
+  pointer-events: none;
 }
 
 .g-label {
@@ -145,8 +198,8 @@ const bulletPoints = [
   font-size: 11px;
   color: var(--dim);
   position: absolute;
-  top: 10px;
-  left: 14px;
+  top: 12px;
+  left: 16px;
   z-index: 1;
 }
 
@@ -170,38 +223,115 @@ const bulletPoints = [
   stroke: var(--accent);
   stroke-width: 1.5;
   cursor: pointer;
+  transition:
+    fill 0.3s var(--ease-out),
+    stroke-width 0.3s var(--ease-out);
 }
+
 .g-node:hover {
-  fill: rgba(0, 120, 212, 0.4);
+  fill: rgba(0, 120, 212, 0.45);
+  stroke-width: 2.2;
 }
+
 .g-node-core {
   fill: var(--accent);
 }
+
 .g-node-agent {
   fill: rgba(255, 158, 100, 0.18);
   stroke: #ff9e64;
 }
+
+/* pulsing halo behind the core node */
+.g-pulse {
+  fill: none;
+  stroke: var(--accent-hi);
+  stroke-width: 1.2;
+  transform-origin: center;
+  animation: g-halo 3s ease-out infinite;
+}
+
+@keyframes g-halo {
+  0% { transform: scale(1); opacity: 0.55; }
+  70% { transform: scale(1.9); opacity: 0; }
+  100% { transform: scale(1.9); opacity: 0; }
+}
+
+.g-edge,
+.g-edge-hi {
+  stroke-dasharray: var(--len, 200);
+  stroke-dashoffset: var(--len, 200);
+}
+
 .g-edge {
   stroke: #2f3b49;
   stroke-width: 1.2;
 }
+
 .g-edge-hi {
   stroke: var(--accent);
   stroke-width: 1.6;
-  stroke-dasharray: 4 3;
-  animation: g-dash 2s linear infinite;
 }
-@keyframes g-dash {
+
+/* draw the edges in once the panel enters the viewport */
+.graph-wrap.drawn .g-edge,
+.graph-wrap.drawn .g-edge-hi {
+  animation: g-draw 0.85s var(--ease-out) forwards;
+  animation-delay: calc(var(--i, 0) * 90ms);
+}
+
+@keyframes g-draw {
   to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* after drawing, the highlighted edges keep their marching-ants motion */
+.graph-wrap.drawn .g-edge-hi {
+  animation:
+    g-draw 0.85s var(--ease-out) forwards,
+    g-dash 2s linear 1.2s infinite;
+}
+
+@keyframes g-dash {
+  from {
+    stroke-dasharray: 4 3;
+    stroke-dashoffset: 0;
+  }
+  to {
+    stroke-dasharray: 4 3;
     stroke-dashoffset: -14;
   }
 }
+
+/* nodes pop in after their edges */
+.g-group {
+  opacity: 0;
+}
+
+.graph-wrap.drawn .g-group {
+  animation: g-pop 0.55s var(--ease-spring) forwards;
+  animation-delay: calc(320ms + var(--i, 0) * 85ms);
+}
+
+@keyframes g-pop {
+  from {
+    opacity: 0;
+    transform: translate(var(--tx, 0), var(--ty, 0)) scale(0.4);
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 .g-text {
   font-family: var(--font-mono);
   font-size: 10px;
   fill: var(--muted);
+  pointer-events: none;
 }
+
 .g-text-hi {
-  fill: var(--accent-hi);
+  fill: #fff;
 }
 </style>

@@ -37,7 +37,7 @@ const osCards: OsCard[] = [
 </script>
 
 <template>
-  <section id="download">
+  <section id="download" class="glow-top">
     <div class="wrap">
       <div class="sec-head" v-reveal>
         <div class="kicker">// download</div>
@@ -45,7 +45,7 @@ const osCards: OsCard[] = [
         <p>One installer per platform. The in-app updater checks silently on launch and installs new versions automatically.</p>
       </div>
       <div class="os-grid">
-        <div v-for="(os, i) in osCards" :key="os.name" class="os" v-reveal="i * 100">
+        <div v-for="(os, i) in osCards" :key="os.name" class="os" v-spotlight v-reveal="{ delay: i * 110, variant: 'scale' }">
           <div class="os-ic"><Icon :icon="os.icon" width="30" height="30" /></div>
           <h3>{{ os.name }}</h3>
           <p>{{ os.desc }}</p>
@@ -69,26 +69,52 @@ const osCards: OsCard[] = [
 }
 
 .os {
-  background: var(--bg-2);
+  position: relative;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.015));
   border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 28px;
+  border-radius: var(--radius-lg);
+  padding: 32px 28px;
   text-align: center;
+  overflow: hidden;
+  isolation: isolate;
+  backdrop-filter: blur(10px);
   transition:
-    transform 0.18s,
-    border-color 0.18s;
+    transform 0.35s var(--ease-out),
+    border-color 0.35s var(--ease-out),
+    box-shadow 0.35s var(--ease-out);
+}
+
+.os::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    300px circle at var(--mx, 50%) var(--my, 50%),
+    rgba(0, 120, 212, 0.14),
+    transparent 65%
+  );
+  opacity: var(--spot-opacity, 0);
+  transition: opacity 0.35s var(--ease-out);
+  pointer-events: none;
+  z-index: -1;
 }
 
 .os:hover {
-  transform: translateY(-4px);
-  border-color: var(--accent);
+  transform: translateY(-6px);
+  border-color: rgba(77, 170, 252, 0.4);
+  box-shadow: var(--shadow-md), var(--shadow-glow);
 }
 
 .os .os-ic {
   color: var(--accent-hi);
-  margin-bottom: 12px;
+  margin-bottom: 14px;
   display: grid;
   place-items: center;
+  transition: transform 0.45s var(--ease-spring);
+}
+
+.os:hover .os-ic {
+  transform: translateY(-3px) scale(1.12);
 }
 
 .os h3 {

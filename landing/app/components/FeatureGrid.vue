@@ -67,7 +67,7 @@ const features: Feature[] = [
 </script>
 
 <template>
-  <section id="features">
+  <section id="features" class="glow-top">
     <div class="wrap">
       <div class="sec-head" v-reveal>
         <div class="kicker">// features</div>
@@ -75,7 +75,13 @@ const features: Feature[] = [
         <p>An editor first, a workbench second. The tree, the preview and the terminal exist to serve one file at a time.</p>
       </div>
       <div class="feat-grid">
-        <article v-for="(f, i) in features" :key="f.title" class="feat" v-reveal="(i % 3) * 80">
+        <article
+          v-for="(f, i) in features"
+          :key="f.title"
+          class="feat"
+          v-spotlight
+          v-reveal="{ delay: (i % 3) * 90, variant: 'scale' }"
+        >
           <div class="ic"><Icon :icon="f.icon" width="20" height="20" /></div>
           <h3>{{ f.title }}</h3>
           <p>{{ f.desc }}</p>
@@ -90,46 +96,95 @@ const features: Feature[] = [
 .feat-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
+  gap: 18px;
 }
 
 .feat {
-  background: var(--bg-2);
+  position: relative;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.015));
   border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 24px;
+  border-radius: var(--radius-lg);
+  padding: 26px;
+  overflow: hidden;
+  isolation: isolate;
+  backdrop-filter: blur(10px);
   transition:
-    transform 0.18s,
-    border-color 0.18s,
-    background 0.18s;
+    transform 0.35s var(--ease-out),
+    border-color 0.35s var(--ease-out),
+    box-shadow 0.35s var(--ease-out);
+}
+
+/* cursor spotlight (driven by v-spotlight → --mx/--my/--spot-opacity) */
+.feat::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    280px circle at var(--mx, 50%) var(--my, 50%),
+    rgba(0, 120, 212, 0.16),
+    transparent 65%
+  );
+  opacity: var(--spot-opacity, 0);
+  transition: opacity 0.35s var(--ease-out);
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* top hairline that lights up on hover */
+.feat::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 12%;
+  right: 12%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent-hi), transparent);
+  opacity: 0;
+  transition: opacity 0.35s var(--ease-out);
+  pointer-events: none;
 }
 
 .feat:hover {
-  transform: translateY(-3px);
-  border-color: #4a4a4a;
-  background: var(--bg-hover);
+  transform: translateY(-5px);
+  border-color: rgba(77, 170, 252, 0.34);
+  box-shadow: var(--shadow-md), var(--shadow-glow);
+}
+
+.feat:hover::after {
+  opacity: 1;
 }
 
 .feat .ic {
-  width: 38px;
-  height: 38px;
-  border-radius: 8px;
-  background: rgba(0, 120, 212, 0.14);
+  width: 42px;
+  height: 42px;
+  border-radius: 11px;
+  background: linear-gradient(150deg, rgba(0, 120, 212, 0.25), rgba(0, 120, 212, 0.08));
+  border: 1px solid rgba(77, 170, 252, 0.18);
+  color: var(--accent-hi);
   display: grid;
   place-items: center;
-  font-size: 18px;
-  margin-bottom: 14px;
+  margin-bottom: 16px;
+  transition:
+    transform 0.4s var(--ease-spring),
+    box-shadow 0.4s var(--ease-out);
+}
+
+.feat:hover .ic {
+  transform: translateY(-2px) scale(1.08) rotate(-4deg);
+  box-shadow: 0 6px 20px rgba(0, 120, 212, 0.3);
 }
 
 .feat h3 {
-  font-size: 15px;
+  font-size: 15.5px;
   color: #fff;
   margin-bottom: 8px;
+  letter-spacing: -0.2px;
 }
 
 .feat p {
   font-size: 13.5px;
   color: var(--muted);
+  line-height: 1.65;
 }
 
 .feat .tag {
@@ -137,10 +192,19 @@ const features: Feature[] = [
   font-family: var(--font-mono);
   font-size: 10px;
   color: var(--accent-hi);
-  border: 1px solid rgba(77, 170, 252, 0.35);
+  border: 1px solid rgba(77, 170, 252, 0.28);
+  background: rgba(0, 120, 212, 0.08);
   border-radius: 999px;
-  padding: 2px 8px;
-  margin-top: 10px;
+  padding: 2.5px 9px;
+  margin-top: 12px;
+  transition:
+    background 0.3s var(--ease-out),
+    border-color 0.3s var(--ease-out);
+}
+
+.feat:hover .tag {
+  background: rgba(0, 120, 212, 0.16);
+  border-color: rgba(77, 170, 252, 0.5);
 }
 
 @media (max-width: 960px) {

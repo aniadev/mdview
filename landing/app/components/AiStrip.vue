@@ -38,12 +38,14 @@ const agentFiles = [
 .ai-strip {
   display: grid;
   grid-template-columns: auto 1fr;
-  gap: 40px;
+  gap: 44px;
   align-items: center;
-  background: var(--bg-2);
+  background: linear-gradient(135deg, rgba(255, 158, 100, 0.06), rgba(255, 255, 255, 0.02) 45%);
   border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 40px 44px;
+  border-radius: var(--radius-lg);
+  padding: 44px 48px;
+  backdrop-filter: blur(10px);
+  box-shadow: var(--shadow-md);
 }
 
 .ai-files {
@@ -58,16 +60,21 @@ const agentFiles = [
   display: flex;
   align-items: center;
   gap: 10px;
-  background: var(--bg-code);
+  background: rgba(13, 17, 23, 0.7);
   border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 9px 14px;
+  border-radius: 9px;
+  padding: 10px 15px;
   color: #d6dde5;
-  transition: border-color 0.15s;
+  transition:
+    border-color 0.3s var(--ease-out),
+    transform 0.3s var(--ease-out),
+    box-shadow 0.3s var(--ease-out);
 }
 
 .ai-file:hover {
-  border-color: #ff9e64;
+  border-color: rgba(255, 158, 100, 0.55);
+  transform: translateX(4px);
+  box-shadow: 0 6px 20px rgba(255, 158, 100, 0.12);
 }
 
 .ai-file .r {

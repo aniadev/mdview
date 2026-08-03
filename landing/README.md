@@ -29,9 +29,12 @@ app/
     ShortcutsSection.vue       # bảng phím tắt
     DownloadSection.vue        # 3 OS cards
     SiteFooter.vue
-  plugins/reveal.ts            # v-reveal directive (SSR-safe, có getSSRProps)
+  plugins/
+    reveal.ts                  # v-reveal directive (SSR-safe, variants + delay)
+    spotlight.ts               # v-spotlight directive (cursor-tracking glow)
+    icons.ts                   # addCollection(lucide) offline
   assets/css/main.css          # design tokens + base
-public/mdview.png              # favicon (copy từ app)
+public/mdview-logo.png         # brand logo (resize từ root public/mdview.png)
 ```
 
 ## Design system
@@ -49,7 +52,22 @@ Tokens trong `app/assets/css/main.css` — lấy trực tiếp từ tokens thậ
 
 Icons: **Iconify lucide** (giống app — `@iconify/vue` + `@iconify-json/lucide`, register offline qua `app/plugins/icons.ts` `addCollection()`, không CDN). Brand logo: ảnh app thật (`public/mdview.png` ở root repo, resize 128px → `landing/public/mdview-logo.png`).
 
-Animation: `v-reveal` scroll-reveal (IntersectionObserver, có stagger qua `v-reveal="100"`), caret blink trong window mock, dashed-edge animation ở graph, hover lift trên cards.
+Animation (đo bằng browser: 10 animation đang chạy, trước đó chỉ 2):
+
+| Hiệu ứng | Nơi dùng |
+|---|---|
+| Hero entrance stagger | badge → h1 → sub → CTA → trust row (delay 50–520ms) |
+| Typing effect | headline luân phiên 3 câu, caret glow |
+| Gradient shimmer | chữ gradient trong h1 |
+| Ambient orbs drift | `AmbientBg.vue` — 3 quả cầu blur 110px, 22–30s |
+| Scroll progress | `ScrollProgress.vue` — thanh gradient trên cùng |
+| Nav shrink | 66px → 56px + blur/shadow khi scroll > 24px |
+| Cursor spotlight | `v-spotlight` trên 12 cards (feature + OS) |
+| Graph draw-in | edges vẽ theo `stroke-dashoffset`, nodes pop sau, halo pulse ở node core |
+| Button shine | vệt sáng quét ngang khi hover |
+| Reveal variants | up / scale / left / right + blur-in, stagger theo index |
+
+Tokens motion: `--ease-out` (0.16,1,0.3,1), `--ease-spring` (0.34,1.56,0.64,1). Có `@media (prefers-reduced-motion: reduce)` tắt toàn bộ.
 
 ## Mockup nguồn
 

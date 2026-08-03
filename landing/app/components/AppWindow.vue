@@ -88,9 +88,9 @@ const tabs: MockTab[] = [
 ]
 
 const treeFiles = [
-  { name: 'getting-started.md', icon: 'lucide:file-text', agent: false },
-  { name: 'AGENTS.md', icon: 'lucide:bot', agent: true },
-  { name: '2026-08-03.md', icon: 'lucide:notebook', agent: false },
+  { name: 'getting-started.md', label: 'getting-started', icon: 'lucide:file-text', agent: false },
+  { name: 'AGENTS.md', label: 'AGENTS.md', icon: 'lucide:bot', agent: true },
+  { name: '2026-08-03.md', label: '2026-08-03.md', icon: 'lucide:notebook', agent: false },
 ]
 
 const active = ref(0)
@@ -128,11 +128,11 @@ function select(i: number) {
           :class="{ active: f.name === current.treeActive }"
           :style="{ opacity: 1 }"
         >
-          <Icon :icon="f.icon" width="11" height="11" class="t-ic" :class="{ agent: f.agent }" /> {{ f.name }}
+          <Icon :icon="f.icon" width="11" height="11" class="t-ic" :class="{ agent: f.agent }" /> {{ f.label }}
         </div>
-        <div class="dim"><Icon icon="lucide:folder" width="11" height="11" class="t-ic" /> guides/ <span class="dim-sub">(no .md)</span></div>
-        <div class="lvl2 file"><Icon icon="lucide:file-text" width="11" height="11" class="t-ic" /> architecture.md</div>
-        <div class="lvl2 file"><Icon icon="lucide:link" width="11" height="11" class="t-ic" /> backlinks.md</div>
+        <div class="dim"><Icon icon="lucide:folder" width="11" height="11" class="t-ic" /> guides/</div>
+        <div class="lvl2 file"><Icon icon="lucide:file-text" width="11" height="11" class="t-ic" /> architecture</div>
+        <div class="lvl2 file"><Icon icon="lucide:link" width="11" height="11" class="t-ic" /> backlinks</div>
       </div>
 
       <div class="editor" v-html="current.editorHtml" />
@@ -150,32 +150,46 @@ function select(i: number) {
 
 <style scoped>
 .window {
-  background: var(--bg-code);
+  position: relative;
+  background: linear-gradient(180deg, rgba(13, 17, 23, 0.96), rgba(13, 17, 23, 0.88));
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--radius-lg);
   box-shadow:
-    0 24px 80px rgba(0, 0, 0, 0.5),
-    0 0 0 1px rgba(255, 255, 255, 0.02);
+    var(--shadow-lg),
+    0 0 0 1px rgba(255, 255, 255, 0.03),
+    0 0 60px rgba(0, 120, 212, 0.1);
   overflow: hidden;
+  backdrop-filter: blur(12px);
+  transition:
+    transform 0.5s var(--ease-out),
+    box-shadow 0.5s var(--ease-out);
+}
+
+.window:hover {
+  transform: translateY(-4px);
+  box-shadow:
+    var(--shadow-lg),
+    0 0 0 1px rgba(77, 170, 252, 0.14),
+    0 0 90px rgba(0, 120, 212, 0.18);
 }
 
 .win-bar {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
   background: var(--bg-3);
-  padding: 10px 14px;
+  padding: 8px 11px;
   border-bottom: 1px solid var(--border);
 }
 
 .dots {
   display: flex;
-  gap: 6px;
+  gap: 5px;
 }
 
 .dots i {
-  width: 11px;
-  height: 11px;
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
   display: block;
 }
@@ -186,15 +200,15 @@ function select(i: number) {
 
 .win-tabs {
   display: flex;
-  gap: 4px;
-  margin-left: 14px;
+  gap: 3px;
+  margin-left: 10px;
   overflow: hidden;
 }
 
 .win-tab {
   font-family: var(--font-mono);
-  font-size: 11.5px;
-  padding: 4px 12px;
+  font-size: 10px;
+  padding: 3px 9px;
   border-radius: 4px 4px 0 0;
   cursor: pointer;
   color: var(--dim);
@@ -216,37 +230,37 @@ function select(i: number) {
 
 .win-body {
   display: grid;
-  grid-template-columns: 150px 1fr 1fr;
-  min-height: 330px;
+  grid-template-columns: 116px 1fr 1fr;
+  min-height: 264px;
 }
 
 .tree {
-  padding: 12px 8px;
+  padding: 9px 6px;
   border-right: 1px solid var(--border);
   font-family: var(--font-mono);
-  font-size: 11.5px;
-  line-height: 1.9;
+  font-size: 9.5px;
+  line-height: 1.85;
   color: var(--muted);
-  background: #161b22;
+  background: rgba(22, 27, 34, 0.85);
 }
 
 .tree .dim {
   opacity: 0.35;
-  padding: 1px 6px;
-}
-
-.tree .dim-sub {
-  opacity: 0.7;
+  padding: 1px 5px;
+  white-space: nowrap;
 }
 
 .tree .lvl2 {
-  padding-left: 14px;
+  padding-left: 11px;
 }
 
 .tree .file {
   cursor: pointer;
-  padding: 1px 6px;
+  padding: 1px 5px;
   border-radius: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .tree .file:hover {
@@ -261,7 +275,7 @@ function select(i: number) {
 .tree .t-ic {
   color: var(--dim);
   vertical-align: -1px;
-  margin-right: 3px;
+  margin-right: 2px;
 }
 
 .tree .t-ic.agent {
@@ -269,10 +283,10 @@ function select(i: number) {
 }
 
 .editor {
-  padding: 16px 18px;
+  padding: 12px 13px;
   font-family: var(--font-mono);
-  font-size: 12.5px;
-  line-height: 1.75;
+  font-size: 10.5px;
+  line-height: 1.72;
   color: #d6dde5;
   border-right: 1px solid var(--border);
   overflow: hidden;
@@ -280,22 +294,22 @@ function select(i: number) {
 }
 
 .preview {
-  padding: 16px 18px;
-  font-size: 12.5px;
-  line-height: 1.75;
+  padding: 12px 13px;
+  font-size: 10.5px;
+  line-height: 1.72;
   color: #d6dde5;
   overflow: hidden;
 }
 
 .win-status {
   display: flex;
-  gap: 16px;
+  gap: 13px;
   align-items: center;
   background: var(--bg-3);
   border-top: 1px solid var(--border);
-  padding: 7px 14px;
+  padding: 6px 11px;
   font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-size: 9.5px;
   color: var(--dim);
 }
 
@@ -331,7 +345,7 @@ function select(i: number) {
 .aw-h1 {
   color: #fff;
   font-weight: 600;
-  font-size: 14px;
+  font-size: 11.5px;
 }
 .aw-strong {
   color: #fff;
@@ -358,8 +372,8 @@ function select(i: number) {
 }
 .aw-caret {
   display: inline-block;
-  width: 7px;
-  height: 15px;
+  width: 6px;
+  height: 12px;
   background: var(--accent-hi);
   vertical-align: -2px;
   animation: aw-blink 1.1s steps(2) infinite;
@@ -379,42 +393,42 @@ function select(i: number) {
   margin-top: 8px;
 }
 .aw-hint {
-  margin-top: 14px;
+  margin-top: 11px;
   color: var(--muted);
 }
 .aw-kbd {
   font-family: var(--font-mono);
   background: #21262d;
   border: 1px solid #30363d;
-  border-radius: 4px;
-  padding: 0 5px;
-  font-size: 11px;
+  border-radius: 3px;
+  padding: 0 4px;
+  font-size: 9.5px;
 }
 .aw-mermaid {
-  margin-top: 10px;
+  margin-top: 8px;
   border: 1px solid #30363d;
   background: #0f1419;
-  border-radius: 6px;
-  padding: 10px 12px;
+  border-radius: 5px;
+  padding: 8px 9px;
   font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-size: 9px;
   line-height: 1.5;
 }
 .aw-n {
   display: inline-block;
   border: 1px solid var(--accent);
   color: var(--accent-hi);
-  border-radius: 4px;
-  padding: 1px 7px;
+  border-radius: 3px;
+  padding: 1px 6px;
   margin: 2px;
 }
 .aw-a {
   color: var(--dim);
-  margin: 0 5px;
+  margin: 0 4px;
 }
 .preview h3 {
-  font-size: 14px;
+  font-size: 11.5px;
   color: #fff;
-  margin-bottom: 6px;
+  margin-bottom: 5px;
 }
 </style>

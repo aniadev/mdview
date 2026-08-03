@@ -4,6 +4,8 @@
 
 *Editor Markdown tập trung cho dev, writer và ai đang làm việc với AI agent.*
 
+**🌐 Website: [mdviewz.vercel.app](https://mdviewz.vercel.app)** · [Download](https://github.com/aniadev/mdview/releases)
+
 ---
 
 mdview is a desktop app for people who keep notes, documentation, or AI agent instructions in Markdown files inside a project folder. A smart file tree, a split-pane editor with live preview, an integrated terminal, and a growing set of productivity tools — without the bloat.
@@ -14,7 +16,7 @@ mdview is a desktop app for people who keep notes, documentation, or AI agent in
 
 ![mdview screenshot](./public/screenshot-graphview.png)
 
-[Changelog](./CHANGELOG.md) · [GitHub Releases](https://github.com/aniadev/mdview/releases)
+[Website](https://mdviewz.vercel.app) · [Changelog](./CHANGELOG.md) · [GitHub Releases](https://github.com/aniadev/mdview/releases)
 
 ---
 

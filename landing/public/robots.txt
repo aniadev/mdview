@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://landing-iota-six-87.vercel.app/sitemap.xml
+Sitemap: https://mdviewz.vercel.app/sitemap.xml

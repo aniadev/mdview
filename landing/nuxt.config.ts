@@ -1,8 +1,7 @@
-// Public production URL. NOTE: `mdview.vercel.app` is already taken by an
-// unrelated project, so the canonical host is the alias Vercel assigned to
-// this project. Change this (and public/robots.txt + public/sitemap.xml) if a
-// custom domain is added later.
-const SITE_URL = 'https://landing-iota-six-87.vercel.app'
+// Public production URL. NOTE: `mdview.vercel.app` was already taken by an
+// unrelated project, so this deployment uses `mdviewz`. Change this (and
+// public/robots.txt + public/sitemap.xml) if a custom domain is added later.
+const SITE_URL = 'https://mdviewz.vercel.app'
 const SITE_NAME = 'mdview'
 const TITLE = 'mdview — Focused Markdown workspace editor'
 const DESCRIPTION =

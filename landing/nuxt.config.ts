@@ -9,12 +9,12 @@ const DESCRIPTION =
 const OG_IMAGE = `${SITE_URL}/og-image.png`
 
 // Google Search Console verification token.
-// Get it at https://search.google.com/search-console → Add property →
-// URL prefix → HTML tag, then copy ONLY the content="..." value here
-// (or set NUXT_PUBLIC_GOOGLE_SITE_VERIFICATION in the Vercel env vars).
-// Leaving it empty simply omits the tag — the site still gets indexed via
-// robots.txt + sitemap.xml, verification just unlocks Search Console data.
-const GOOGLE_SITE_VERIFICATION = process.env.NUXT_PUBLIC_GOOGLE_SITE_VERIFICATION || ''
+// This value is public by design (it ships in the HTML), so it is safe to
+// commit. Override per-environment with NUXT_PUBLIC_GOOGLE_SITE_VERIFICATION
+// if the property is ever re-registered under a different Google account.
+const GOOGLE_SITE_VERIFICATION =
+  process.env.NUXT_PUBLIC_GOOGLE_SITE_VERIFICATION ||
+  'MrMvYCUmLX4dIQIpmzIvbrHXgJyLWgyCnECwfHMUiLI'
 
 export default defineNuxtConfig({
   compatibilityDate: '2026-01-01',

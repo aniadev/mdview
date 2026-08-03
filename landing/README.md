@@ -53,23 +53,23 @@ npx vercel alias set <deployment-url> mdviewz.vercel.app
 
 ## Google Search Console
 
-SEO đã cấu hình sẵn (meta robots/googlebot, canonical, hreflang, OG/Twitter,
-JSON-LD, robots.txt, sitemap.xml). Chỉ còn **xác minh quyền sở hữu** — bước này
-cần tài khoản Google của bạn:
+SEO đã cấu hình đầy đủ (meta robots/googlebot, canonical, hreflang, OG/Twitter,
+JSON-LD, robots.txt, sitemap.xml) **và property đã được verify** — token nằm
+trong `GOOGLE_SITE_VERIFICATION` ở `nuxt.config.ts`:
 
-1. Vào https://search.google.com/search-console → **Add property** → **URL prefix**
-   → nhập `https://mdviewz.vercel.app`
-2. Chọn phương thức **HTML tag**, copy phần `content="..."` (chỉ chuỗi token)
-3. Thêm token theo một trong hai cách:
-   - **Env var (khuyến nghị)** — trên Vercel: Settings → Environment Variables →
-     `NUXT_PUBLIC_GOOGLE_SITE_VERIFICATION` = `<token>`, rồi deploy lại
-   - **Hard-code** — sửa `GOOGLE_SITE_VERIFICATION` trong `nuxt.config.ts`
-4. Deploy lại, bấm **Verify** trong Search Console
-5. Sau khi verify: **Sitemaps** → submit `sitemap.xml`; dùng **URL Inspection** →
-   *Request indexing* để Google crawl ngay thay vì chờ
+```html
+<meta name="google-site-verification" content="MrMvYCUmLX4dIQIpmzIvbrHXgJyLWgyCnECwfHMUiLI">
+```
 
-Nếu để token rỗng, tag bị bỏ qua — site vẫn được index bình thường qua
-robots.txt + sitemap.xml, chỉ là không xem được dữ liệu trong Search Console.
+Token này public theo thiết kế (nó nằm trong HTML) nên commit thẳng là an toàn.
+Nếu đăng ký lại property bằng tài khoản Google khác, override bằng env var
+`NUXT_PUBLIC_GOOGLE_SITE_VERIFICATION` trên Vercel — không cần sửa code.
+
+**Việc còn lại trong Search Console:**
+
+1. Bấm **Verify** (tag đã live sẵn trên production)
+2. **Sitemaps** → submit `sitemap.xml`
+3. **URL Inspection** → *Request indexing* để Google crawl ngay thay vì chờ
 
 Kiểm tra structured data: https://search.google.com/test/rich-results
 
